@@ -10,6 +10,10 @@
 // sibling field's value is in that list. `showIf: { field, notEmpty: true }`
 // hides it until the sibling field has any value (used for "dis-m'en plus"
 // follow-ups after a choice).
+// A 'repeat' section can also carry a `fields` array (same shape as a
+// 'single' section's fields) : shown once, above the repeated cards — used
+// for a question that applies to the whole list rather than to one item
+// (ex. "combien de clients au total" before the client cards).
 // No collapsible "exemple inspirant" boxes in this version, every field
 // carries its own inline placeholder instead (including link fields).
 
@@ -194,9 +198,10 @@ export const sections = [
       },
       {
         key: 'qui_plus_servir',
-        label: 'Avec qui tu ne veux pas travailler (ton filtre anti-cauchemar) ?',
+        label: 'Avec qui tu ne veux pas travailler, et pourquoi (ton filtre anti-cauchemar) ? Un critère par ligne si tu en as plusieurs.',
         type: 'textarea',
-        placeholder: 'Ex. les clients qui veulent tout, tout de suite, au prix le plus bas.',
+        rows: 5,
+        placeholder: 'Ex. offre pas encore testée : je ne peux pas traduire une expertise qui n\'est pas encore prouvée, ça élimine les profils indécis.\nEx. profil 100% IA (posts et visuels) : ça veut souvent dire qu\'il n\'est pas prêt à prendre LinkedIn au sérieux et à y passer du temps.',
       },
       {
         key: 'douleur_principale',
@@ -232,11 +237,11 @@ export const sections = [
   // CHAPITRE 4 — Tes preuves
   // ---------------------------------------------------------------------
   {
-    id: 'preuves_intro',
+    id: 'preuves',
     num: '4',
-    kind: 'single',
+    kind: 'repeat',
     title: 'Tes preuves',
-    subtitle: '',
+    subtitle: 'Combien de clients tu as accompagnés, puis tes 2 à 3 meilleurs.',
     fields: [
       {
         key: 'nombre_clients',
@@ -245,13 +250,6 @@ export const sections = [
         placeholder: 'Ex. une douzaine, ou "150 projets depuis 2022"',
       },
     ],
-  },
-  {
-    id: 'preuves',
-    num: '4',
-    kind: 'repeat',
-    title: 'Tes meilleurs clients',
-    subtitle: 'Tes 2 à 3 meilleurs clients.',
     repeatCount: 2,
     expandable: true,
     repeatMax: 3,
@@ -280,9 +278,9 @@ export const sections = [
   {
     id: 'offre_positionnement',
     num: '5',
-    kind: 'single',
+    kind: 'repeat',
     title: 'Ton offre & positionnement',
-    subtitle: '',
+    subtitle: 'Ta manière de vendre, ce qui te différencie, et le déroulé concret de ta prestation.',
     fields: [
       {
         key: 'offre_une_phrase',
@@ -332,6 +330,25 @@ export const sections = [
         type: 'text',
         placeholder: 'Ex. unique par le visuel. Visible par le contenu. Trouvé par tes clients.',
       },
+      {
+        key: 'document_lien',
+        label: 'As-tu déjà un document qui résume ton offre, ta cible, tes filtres, tes résultats... ? Colle le lien ici, ça nous fera gagner du temps. (Optionnel, ne remplace pas les questions ci-dessus.)',
+        type: 'text',
+        placeholder: 'Ex. lien Notion, Google Doc ou PDF partagé.',
+      },
+    ],
+    repeatCount: 3,
+    expandable: true,
+    repeatMax: 8,
+    repeatLabel: 'Étape',
+    repeatFields: [
+      { key: 'nom', label: 'Nom de l\'étape', type: 'text', placeholder: 'Ex. Rapport de clarté' },
+      {
+        key: 'detail',
+        label: 'En quoi ça consiste concrètement',
+        type: 'textarea',
+        placeholder: 'Ex. audit complet du profil actuel, identification du positionnement, plan d\'action détaillé.',
+      },
     ],
   },
 
@@ -369,6 +386,12 @@ export const sections = [
         label: 'Qu\'est-ce que tu n\'aimes pas dans ton profil LinkedIn actuel ?',
         type: 'textarea',
         placeholder: 'Ex. je trouve ma bannière trop générique, mon titre ne dit rien de précis.',
+      },
+      {
+        key: 'aime_profil_actuel',
+        label: 'À l\'inverse, qu\'est-ce que tu aimes sur ton profil actuel ?',
+        type: 'textarea',
+        placeholder: 'Ex. je trouve que mon message est clair, ou que ma bannière représente bien mon univers.',
       },
       {
         key: 'deja_reproche',
@@ -437,9 +460,9 @@ export const sections = [
       },
       {
         key: 'photos_lien',
-        label: 'As-tu des photos de toi que tu aimes et que tu veux qu\'on utilise ? Mets-les dans un dossier partagé et colle le lien ici.',
+        label: 'Mets tes photos (celles que tu aimes, celles que tu veux voir utilisées) dans un dossier partagé, et colle le lien ici.',
         type: 'text',
-        placeholder: 'Ex. lien Google Drive ou Dropbox. Sinon laisse vide, on en reparle en call.',
+        placeholder: 'Ex. lien Google Drive ou Dropbox avec 3 à 5 photos de toi.',
       },
       {
         key: 'couleurs_styles',

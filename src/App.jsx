@@ -10,13 +10,13 @@ function fieldKey(sectionId, repIndex, fieldKey) {
     : `${sectionId}.${repIndex}.${fieldKey}`
 }
 
-function Field({ label, type, placeholder, value, onChange, min, max, options }) {
+function Field({ label, type, placeholder, value, onChange, min, max, options, rows }) {
   return (
     <div className="field">
       <label>{label}</label>
       {type === 'textarea' ? (
         <textarea
-          rows={3}
+          rows={rows || 3}
           placeholder={placeholder}
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
@@ -82,6 +82,40 @@ function RecapCard({ items, answers }) {
       ))}
     </div>
   )
+}
+
+// Renders a flat list of fields (with showIf / groupLabel support), used both
+// for single/intro/final sections and for the optional preamble `fields` on
+// a 'repeat' section (e.g. "combien de clients" before the client cards).
+function FieldList({ fields, sectionId, answers, setValue }) {
+  return fields.map((f, idx) => {
+    if (f.showIf) {
+      const controlValue = answers[fieldKey(sectionId, undefined, f.showIf.field)]
+      if (f.showIf.notEmpty) {
+        if (!controlValue || !String(controlValue).trim()) return null
+      } else if (f.showIf.in && !f.showIf.in.includes(controlValue)) {
+        return null
+      }
+    }
+    const prevField = idx > 0 ? fields[idx - 1] : null
+    const showGroupHeading = f.groupLabel && f.groupLabel !== prevField?.groupLabel
+    return (
+      <div key={f.key} className="field-wrap">
+        {showGroupHeading && <div className="field-group-heading">{f.groupLabel}</div>}
+        <Field
+          label={f.label}
+          type={f.type}
+          placeholder={f.placeholder}
+          min={f.min}
+          max={f.max}
+          options={f.options}
+          rows={f.rows}
+          value={answers[fieldKey(sectionId, undefined, f.key)]}
+          onChange={(v) => setValue(fieldKey(sectionId, undefined, f.key), v)}
+        />
+      </div>
+    )
+  })
 }
 
 function ChecklistCard({ items, filledIds, onJump }) {
@@ -152,13 +186,18 @@ export default function App() {
     sections.forEach((s) => {
       if (s.kind === 'repeat') {
         const count = extraCounts[s.id] ?? s.repeatCount
-        structured[s.id] = Array.from({ length: count }).map((_, i) => {
+        const items = Array.from({ length: count }).map((_, i) => {
           const obj = {}
           s.repeatFields.forEach((f) => {
             obj[f.key] = answers[fieldKey(s.id, i, f.key)] || ''
           })
           return obj
         })
+        const fieldsObj = {}
+        ;(s.fields || []).forEach((f) => {
+          fieldsObj[f.key] = answers[fieldKey(s.id, undefined, f.key)] || ''
+        })
+        structured[s.id] = { fields: fieldsObj, items }
       } else {
         const obj = {}
         s.fields.forEach((f) => {
@@ -268,6 +307,10 @@ export default function App() {
           {section.recap && <RecapCard items={section.recap} answers={answers} />}
 
           <div className="fields-area">
+            {section.kind === 'repeat' && section.fields && section.fields.length > 0 && (
+              <FieldList fields={section.fields} sectionId={section.id} answers={answers} setValue={setValue} />
+            )}
+
             {section.kind === 'repeat' &&
               Array.from({ length: repeatCountFor(section) }).map((_, i) => {
                 const pairedSection = section.pairedWith
@@ -299,7 +342,7 @@ export default function App() {
                         key={f.key}
                         label={f.label}
                         type={f.type}
-                        placeholder={section.placeholders?.[i]?.[f.key] || f.placeholder}
+                        placeholder={f.placeholder}
                         options={f.options}
                         value={answers[fieldKey(section.id, i, f.key)]}
                         onChange={(v) => setValue(fieldKey(section.id, i, f.key), v)}
@@ -317,34 +360,9 @@ export default function App() {
                 </button>
               )}
 
-            {(section.kind === 'single' || section.kind === 'intro' || section.kind === 'final') &&
-              section.fields.map((f, idx) => {
-                if (f.showIf) {
-                  const controlValue = answers[fieldKey(section.id, undefined, f.showIf.field)]
-                  if (f.showIf.notEmpty) {
-                    if (!controlValue || !String(controlValue).trim()) return null
-                  } else if (f.showIf.in && !f.showIf.in.includes(controlValue)) {
-                    return null
-                  }
-                }
-                const prevField = idx > 0 ? section.fields[idx - 1] : null
-                const showGroupHeading = f.groupLabel && f.groupLabel !== prevField?.groupLabel
-                return (
-                  <div key={f.key} className="field-wrap">
-                    {showGroupHeading && <div className="field-group-heading">{f.groupLabel}</div>}
-                    <Field
-                      label={f.label}
-                      type={f.type}
-                      placeholder={section.placeholders?.[f.key] || f.placeholder}
-                      min={f.min}
-                      max={f.max}
-                      options={f.options}
-                      value={answers[fieldKey(section.id, undefined, f.key)]}
-                      onChange={(v) => setValue(fieldKey(section.id, undefined, f.key), v)}
-                    />
-                  </div>
-                )
-              })}
+            {(section.kind === 'single' || section.kind === 'intro' || section.kind === 'final') && (
+              <FieldList fields={section.fields} sectionId={section.id} answers={answers} setValue={setValue} />
+            )}
 
             {section.kind === 'final' && (
               <ChecklistCard items={checklistItems} filledIds={filledSectionIds} onJump={goTo} />

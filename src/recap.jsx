@@ -1,10 +1,13 @@
 import { sections, WORKBOOK_TITLE } from './data.js'
 
 // Shared recap logic — used by the client-side "download my answers" view in
-// App.jsx (fed by the local `payload` state) and could equally be used by the
-// admin viewer, since both work off the same structured-by-section shape:
+// App.jsx (fed by the local `payload` state) and the admin viewer, since both
+// work off the same structured-by-section shape:
 // { sectionId: { field: value } } for single sections, or
-// { sectionId: [{ field: value }, ...] } for repeat sections.
+// { sectionId: { fields: { field: value }, items: [{ field: value }, ...] } }
+// for repeat sections (`fields` holds any preamble fields shown once above
+// the repeated cards, e.g. "combien de clients" before the client list —
+// empty object when the section has none).
 
 export function sectionTitleFor(sectionId) {
   const s = sections.find((sec) => sec.id === sectionId)
@@ -19,7 +22,13 @@ export function fieldLabelFor(sectionId, key) {
   return f ? f.label : key
 }
 
-// Reshapes the answers into { id, title, isRepeat, items: [{ index, entries: [{label,value}] }] },
+function preambleFieldLabelFor(sectionId, key) {
+  const s = sections.find((sec) => sec.id === sectionId)
+  const f = s?.fields?.find((fl) => fl.key === key)
+  return f ? f.label : key
+}
+
+// Reshapes the answers into { id, title, isRepeat, preamble: [{label,value}], items: [{ index, entries: [{label,value}] }] },
 // skipping intro/final sections and anything left empty.
 export function buildRecapSections(answers) {
   return sections
@@ -28,17 +37,33 @@ export function buildRecapSections(answers) {
       const value = answers[s.id]
       if (!value) return null
       const isRepeat = s.kind === 'repeat'
-      const items = isRepeat ? (Array.isArray(value) ? value : []) : [value]
-      const nonEmptyItems = items
-        .map((item, i) => ({
-          index: i,
-          entries: Object.entries(item || {})
-            .filter(([, v]) => v && String(v).trim())
-            .map(([k, v]) => ({ label: fieldLabelFor(s.id, k), value: v })),
-        }))
-        .filter((it) => it.entries.length > 0)
-      if (nonEmptyItems.length === 0) return null
-      return { id: s.id, title: sectionTitleFor(s.id), isRepeat, items: nonEmptyItems }
+
+      let preamble = []
+      let items = []
+
+      if (isRepeat) {
+        const fieldsObj = value.fields || {}
+        preamble = Object.entries(fieldsObj)
+          .filter(([, v]) => v && String(v).trim())
+          .map(([k, v]) => ({ label: preambleFieldLabelFor(s.id, k), value: v }))
+        const rawItems = Array.isArray(value.items) ? value.items : Array.isArray(value) ? value : []
+        items = rawItems
+          .map((item, i) => ({
+            index: i,
+            entries: Object.entries(item || {})
+              .filter(([, v]) => v && String(v).trim())
+              .map(([k, v]) => ({ label: fieldLabelFor(s.id, k), value: v })),
+          }))
+          .filter((it) => it.entries.length > 0)
+      } else {
+        const entries = Object.entries(value || {})
+          .filter(([, v]) => v && String(v).trim())
+          .map(([k, v]) => ({ label: fieldLabelFor(s.id, k), value: v }))
+        items = entries.length > 0 ? [{ index: 0, entries }] : []
+      }
+
+      if (preamble.length === 0 && items.length === 0) return null
+      return { id: s.id, title: sectionTitleFor(s.id), isRepeat, preamble, items }
     })
     .filter(Boolean)
 }
@@ -52,6 +77,12 @@ export function toMarkdown(answers, clientName) {
   recapSections.forEach((s) => {
     lines.push(`## ${s.title}`)
     lines.push('')
+    s.preamble.forEach((e) => {
+      lines.push(`**${e.label}**`)
+      lines.push('')
+      lines.push(e.value)
+      lines.push('')
+    })
     s.items.forEach((item) => {
       if (s.isRepeat) {
         lines.push(`### #${item.index + 1}`)
@@ -82,6 +113,12 @@ export function RecapContent({ answers, clientName }) {
       {recapSections.map((s) => (
         <div className="admin-section" key={s.id}>
           <div className="admin-section-title">{s.title}</div>
+          {s.preamble.map((e) => (
+            <div className="admin-field" key={'preamble-' + e.label}>
+              <span className="admin-field-label">{e.label}</span>
+              <span className="admin-field-value">{e.value}</span>
+            </div>
+          ))}
           {s.items.map((item) => (
             <div className={s.isRepeat ? 'admin-repeat-item' : ''} key={item.index}>
               {s.isRepeat && <div className="admin-repeat-num">#{item.index + 1}</div>}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase.js'
-import { sections } from './data.js'
+import { buildRecapSections } from './recap.jsx'
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -11,21 +11,9 @@ function formatDate(iso) {
   }
 }
 
-function fieldLabelFor(sectionId, key) {
-  const s = sections.find((sec) => sec.id === sectionId)
-  if (!s) return key
-  const fields = s.kind === 'repeat' ? s.repeatFields : s.fields
-  const f = fields?.find((fl) => fl.key === key)
-  return f ? f.label : key
-}
-
-function sectionTitleFor(sectionId) {
-  const s = sections.find((sec) => sec.id === sectionId)
-  return s ? `Section ${s.num} (${s.title})` : sectionId
-}
-
 function SubmissionDetail({ row }) {
   const answers = row.answers || {}
+  const recapSections = buildRecapSections(answers)
   return (
     <div className="admin-detail">
       <div className="admin-detail-header">
@@ -41,34 +29,28 @@ function SubmissionDetail({ row }) {
         </button>
       </div>
 
-      {sections
-        .filter((s) => s.kind !== 'intro' && s.kind !== 'final')
-        .map((s) => {
-          const value = answers[s.id]
-          if (!value) return null
-          const isRepeat = s.kind === 'repeat'
-          const items = isRepeat ? (Array.isArray(value) ? value : []) : [value]
-          const nonEmptyItems = items.filter((it) => it && Object.values(it).some((v) => v && String(v).trim()))
-          if (nonEmptyItems.length === 0) return null
-          return (
-            <div className="admin-section" key={s.id}>
-              <div className="admin-section-title">{sectionTitleFor(s.id)}</div>
-              {nonEmptyItems.map((item, i) => (
-                <div className={isRepeat ? 'admin-repeat-item' : ''} key={i}>
-                  {isRepeat && <div className="admin-repeat-num">#{i + 1}</div>}
-                  {Object.entries(item).map(([k, v]) =>
-                    v && String(v).trim() ? (
-                      <div className="admin-field" key={k}>
-                        <span className="admin-field-label">{fieldLabelFor(s.id, k)}</span>
-                        <span className="admin-field-value">{v}</span>
-                      </div>
-                    ) : null
-                  )}
+      {recapSections.map((s) => (
+        <div className="admin-section" key={s.id}>
+          <div className="admin-section-title">{s.title}</div>
+          {s.preamble.map((e) => (
+            <div className="admin-field" key={'preamble-' + e.label}>
+              <span className="admin-field-label">{e.label}</span>
+              <span className="admin-field-value">{e.value}</span>
+            </div>
+          ))}
+          {s.items.map((item) => (
+            <div className={s.isRepeat ? 'admin-repeat-item' : ''} key={item.index}>
+              {s.isRepeat && <div className="admin-repeat-num">#{item.index + 1}</div>}
+              {item.entries.map((e) => (
+                <div className="admin-field" key={e.label}>
+                  <span className="admin-field-label">{e.label}</span>
+                  <span className="admin-field-value">{e.value}</span>
                 </div>
               ))}
             </div>
-          )
-        })}
+          ))}
+        </div>
+      ))}
 
       {answers.final?.mot_de_la_fin && (
         <div className="admin-section">
