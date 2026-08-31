@@ -21,7 +21,7 @@ function fieldLabelFor(sectionId, key) {
 
 function sectionTitleFor(sectionId) {
   const s = sections.find((sec) => sec.id === sectionId)
-  return s ? `Section ${s.num} — ${s.title}` : sectionId
+  return s ? `Section ${s.num} (${s.title})` : sectionId
 }
 
 function SubmissionDetail({ row }) {
@@ -162,7 +162,7 @@ export default function Admin() {
   return (
     <div className="admin-shell">
       <div className="admin-topbar">
-        <div className="sidebar-brand">KALANIS — Réponses reçues</div>
+        <div className="sidebar-brand">KALANIS (réponses reçues)</div>
         <button className="btn-secondary" onClick={handleLogout}>
           Se déconnecter
         </button>

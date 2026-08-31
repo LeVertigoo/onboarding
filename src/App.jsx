@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import { sections, WORKBOOK_TITLE } from './data.js'
 import { supabase } from './supabase.js'
-import { RecapContent, toMarkdown } from './recap.jsx'
+import { RecapContent, toMarkdown, buildRecapSections } from './recap.jsx'
 
 function fieldKey(sectionId, repIndex, fieldKey) {
   return repIndex === undefined
@@ -73,7 +73,7 @@ function RecapCard({ items, answers }) {
   if (resolved.length === 0) return null
   return (
     <div className="recap-card">
-      <div className="recap-title">RAPPEL — TES RÉPONSES PRÉCÉDENTES</div>
+      <div className="recap-title">TES RÉPONSES PRÉCÉDENTES</div>
       {resolved.map((it) => (
         <div className="recap-item" key={it.path}>
           <div className="recap-label">{it.label}</div>
@@ -84,34 +84,8 @@ function RecapCard({ items, answers }) {
   )
 }
 
-function ExampleCard({ example }) {
-  const [open, setOpen] = useState(false)
-  if (!example) return null
-  return (
-    <div className="example-card">
-      <button className="example-header" onClick={() => setOpen((o) => !o)}>
-        <span className="example-title">{example.title}</span>
-        <span className="example-right">
-          <span className="example-tag">{example.tag}</span>
-          <span className={'example-chevron' + (open ? ' example-chevron-open' : '')}>▾</span>
-        </span>
-      </button>
-      {open && (
-        <div className="example-body">
-          {example.body.map((b, i) => (
-            <div className="example-line" key={i}>
-              <span className="example-line-label">{b.label}</span>
-              <span className="example-line-text">{b.text}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ChecklistCard({ items, checked, onToggle }) {
-  const doneCount = items.filter((_, i) => checked[i]).length
+function ChecklistCard({ items, filledIds, onJump }) {
+  const doneCount = items.filter((it) => filledIds.has(it.id)).length
   const pct = items.length ? Math.round((doneCount / items.length) * 100) : 0
   return (
     <div className="checklist-card">
@@ -123,16 +97,19 @@ function ChecklistCard({ items, checked, onToggle }) {
         <div className="checklist-progress-fill" style={{ width: `${pct}%` }} />
       </div>
       <ul className="checklist-list">
-        {items.map((c, i) => (
-          <li
-            key={c}
-            className={'checklist-item' + (checked[i] ? ' checklist-item-done' : '')}
-            onClick={() => onToggle(i)}
-          >
-            <span className="checklist-box">{checked[i] ? '✓' : ''}</span>
-            <span>{c}</span>
-          </li>
-        ))}
+        {items.map((it) => {
+          const done = filledIds.has(it.id)
+          return (
+            <li
+              key={it.id}
+              className={'checklist-item' + (done ? ' checklist-item-done' : '')}
+              onClick={() => onJump(it.stepIndex)}
+            >
+              <span className="checklist-box">{done ? '✓' : ''}</span>
+              <span>{it.title}</span>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -143,7 +120,6 @@ export default function App() {
   const [answers, setAnswers] = useState({})
   const [status, setStatus] = useState('idle') // idle | sending | done | error
   const [extraCounts, setExtraCounts] = useState({}) // sectionId -> current repeat count (for expandable repeat sections)
-  const [checklistChecked, setChecklistChecked] = useState({})
 
   const section = sections[stepIndex]
   const total = sections.length
@@ -161,10 +137,6 @@ export default function App() {
       const max = s.repeatMax ?? current + 1
       return { ...prev, [s.id]: Math.min(current + 1, max) }
     })
-  }
-
-  const toggleChecklist = (i) => {
-    setChecklistChecked((prev) => ({ ...prev, [i]: !prev[i] }))
   }
 
   const goNext = () => setStepIndex((i) => Math.min(i + 1, total - 1))
@@ -197,6 +169,21 @@ export default function App() {
     })
     return structured
   }, [answers, extraCounts])
+
+  // Auto-computed checklist : une entrée par section (hors intro/final), cochée
+  // dès que la section a au moins un champ rempli. Basé sur `payload`, donc se
+  // met à jour en temps réel pendant que le client répond.
+  const checklistItems = useMemo(
+    () =>
+      sections
+        .map((s, i) => ({ id: s.id, title: s.title, stepIndex: i, kind: s.kind }))
+        .filter((it) => it.kind !== 'intro' && it.kind !== 'final'),
+    []
+  )
+  const filledSectionIds = useMemo(
+    () => new Set(buildRecapSections(payload).map((s) => s.id)),
+    [payload]
+  )
 
   const handleSubmit = async () => {
     setStatus('sending')
@@ -279,10 +266,6 @@ export default function App() {
           {section.subtitle && <p className="subtitle">{section.subtitle}</p>}
 
           {section.recap && <RecapCard items={section.recap} answers={answers} />}
-          {section.examples &&
-            section.examples.map((ex, idx) => (
-              <ExampleCard key={section.id + '-' + idx} example={ex} />
-            ))}
 
           <div className="fields-area">
             {section.kind === 'repeat' &&
@@ -301,7 +284,7 @@ export default function App() {
                     {pairedLines.length > 0 && (
                       <div className="paired-recap">
                         <div className="paired-recap-label">
-                          Rappel — {pairedSection.repeatLabel} #{i + 1}
+                          Rappel ({pairedSection.repeatLabel} #{i + 1})
                         </div>
                         {pairedLines.map((l) => (
                           <div className="paired-recap-line" key={l.label}>
@@ -338,7 +321,11 @@ export default function App() {
               section.fields.map((f, idx) => {
                 if (f.showIf) {
                   const controlValue = answers[fieldKey(section.id, undefined, f.showIf.field)]
-                  if (!f.showIf.in.includes(controlValue)) return null
+                  if (f.showIf.notEmpty) {
+                    if (!controlValue || !String(controlValue).trim()) return null
+                  } else if (f.showIf.in && !f.showIf.in.includes(controlValue)) {
+                    return null
+                  }
                 }
                 const prevField = idx > 0 ? section.fields[idx - 1] : null
                 const showGroupHeading = f.groupLabel && f.groupLabel !== prevField?.groupLabel
@@ -360,7 +347,7 @@ export default function App() {
               })}
 
             {section.kind === 'final' && (
-              <ChecklistCard items={section.checklist} checked={checklistChecked} onToggle={toggleChecklist} />
+              <ChecklistCard items={checklistItems} filledIds={filledSectionIds} onJump={goTo} />
             )}
           </div>
 
@@ -369,7 +356,7 @@ export default function App() {
               {status === 'done' ? (
                 <div className="submit-success-block">
                   <div className="submit-success">
-                    Réponses enregistrées — merci{clientName ? `, ${clientName}` : ''}.
+                    Réponses enregistrées, merci{clientName ? `, ${clientName}` : ''}.
                   </div>
                   <div className="download-actions">
                     <button className="btn-secondary" onClick={() => window.print()}>

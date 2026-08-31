@@ -8,7 +8,7 @@ import { sections, WORKBOOK_TITLE } from './data.js'
 
 export function sectionTitleFor(sectionId) {
   const s = sections.find((sec) => sec.id === sectionId)
-  return s ? `Section ${s.num} — ${s.title}` : sectionId
+  return s ? `Section ${s.num} (${s.title})` : sectionId
 }
 
 export function fieldLabelFor(sectionId, key) {
