@@ -1,5 +1,4 @@
-
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { sections, WORKBOOK_TITLE } from './data.js'
 import { supabase } from './supabase.js'
 import { RecapContent, toMarkdown, buildRecapSections } from './recap.jsx'
@@ -8,6 +7,39 @@ function fieldKey(sectionId, repIndex, fieldKey) {
   return repIndex === undefined
     ? `${sectionId}.${fieldKey}`
     : `${sectionId}.${repIndex}.${fieldKey}`
+}
+
+// Local-only draft autosave — never touches Supabase. Keeps the client from
+// losing 25-30 minutes of answers to a refresh, an accidental tab close, or
+// a phone locking mid-session. Best-effort: private browsing / a full quota
+// simply falls back to no persistence, same as before this existed.
+const DRAFT_KEY = 'kalanis-workbook-refonte-1500-draft-v1'
+
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function saveDraft(data) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data))
+  } catch {
+    // storage full / disabled — the form still works, it just won't persist
+  }
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // nothing to do
+  }
 }
 
 function Field({ label, type, placeholder, value, onChange, min, max, options, rows }) {
@@ -150,10 +182,22 @@ function ChecklistCard({ items, filledIds, onJump }) {
 }
 
 export default function App() {
-  const [stepIndex, setStepIndex] = useState(0)
-  const [answers, setAnswers] = useState({})
+  const [draftRestored] = useState(() => !!loadDraft())
+  const [draftBannerDismissed, setDraftBannerDismissed] = useState(false)
+  const [stepIndex, setStepIndex] = useState(() => loadDraft()?.stepIndex ?? 0)
+  const [answers, setAnswers] = useState(() => loadDraft()?.answers ?? {})
   const [status, setStatus] = useState('idle') // idle | sending | done | error
-  const [extraCounts, setExtraCounts] = useState({}) // sectionId -> current repeat count (for expandable repeat sections)
+  const [extraCounts, setExtraCounts] = useState(() => loadDraft()?.extraCounts ?? {}) // sectionId -> current repeat count (for expandable repeat sections)
+
+  // Autosave the draft locally on every change, debounced so it doesn't
+  // write on every keystroke. Cleared once the submission actually succeeds.
+  useEffect(() => {
+    if (status === 'done') return
+    const id = setTimeout(() => {
+      saveDraft({ stepIndex, answers, extraCounts, savedAt: Date.now() })
+    }, 400)
+    return () => clearTimeout(id)
+  }, [stepIndex, answers, extraCounts, status])
 
   const section = sections[stepIndex]
   const total = sections.length
@@ -237,6 +281,7 @@ export default function App() {
       setStatus('error')
     } else {
       setStatus('done')
+      clearDraft()
       // Best-effort Slack notification — never blocks or fails the submission
       // if it errors out (e.g. webhook not configured yet).
       fetch('/api/notify-slack', {
@@ -300,6 +345,14 @@ export default function App() {
 
       <main className="main-panel">
         <div className="main-content">
+          {draftRestored && status === 'idle' && !draftBannerDismissed && (
+            <div className="draft-banner">
+              <span>Reprise de ta session précédente — tes réponses ont été restaurées.</span>
+              <button type="button" onClick={() => setDraftBannerDismissed(true)}>
+                Fermer
+              </button>
+            </div>
+          )}
           <div className="eyebrow">SECTION {section.num}</div>
           <h1>{section.title}</h1>
           {section.subtitle && <p className="subtitle">{section.subtitle}</p>}
