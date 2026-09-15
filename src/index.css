@@ -768,6 +768,12 @@ h1 {
   margin-bottom: 18px;
 }
 
+.admin-detail-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .admin-detail-name {
   font-weight: 800;
   font-size: 17px;
@@ -826,8 +832,13 @@ h1 {
 }
 
 @media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+
   .admin-topbar,
-  .admin-print-btn {
+  .admin-print-btn,
+  .admin-md-btn {
     display: none !important;
   }
   .admin-list-item:not(:has(.admin-detail)) {
@@ -838,6 +849,7 @@ h1 {
   }
   .admin-shell {
     padding: 0;
+    max-width: 100%;
   }
 
   /* Client-side "download my answers as PDF" — window.print() is only ever
@@ -860,7 +872,94 @@ h1 {
     display: block !important;
   }
   .main-content {
-    padding: 20px !important;
+    padding: 0 !important;
     max-width: 100% !important;
+  }
+
+  /* ---- Readable print typography for both the client recap and the admin
+     detail view (they share the same admin-* classnames — see recap.jsx) ---- */
+  body {
+    font-size: 13px;
+    color: #121c28;
+  }
+
+  .recap-print-title,
+  .admin-detail-name {
+    font-size: 22px;
+    font-weight: 800;
+    color: #121c28;
+  }
+
+  .recap-print-client,
+  .admin-detail-meta {
+    font-size: 12.5px;
+    color: #55606c;
+    margin-bottom: 6px;
+  }
+
+  .admin-detail-header {
+    border-bottom: 2px solid #121c28;
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+  }
+
+  .admin-section {
+    margin-bottom: 28px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .admin-section-title {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    color: #018ebb;
+    border-bottom: 1.5px solid #dbe3ea;
+    padding-bottom: 7px;
+    margin-bottom: 14px;
+    margin-top: 0;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .admin-repeat-item {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    border: none;
+    border-left: 3px solid #018ebb;
+    background: #f7f9fa;
+    border-radius: 0 6px 6px 0;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+
+  .admin-repeat-num {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #018ebb;
+    margin-bottom: 6px;
+  }
+
+  .admin-field {
+    margin-bottom: 12px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .admin-field-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #7a8794;
+    margin-bottom: 3px;
+  }
+
+  .admin-field-value {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #121c28;
   }
 }
