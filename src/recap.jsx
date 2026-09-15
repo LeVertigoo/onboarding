@@ -11,7 +11,10 @@ import { sections, WORKBOOK_TITLE } from './data.js'
 
 export function sectionTitleFor(sectionId) {
   const s = sections.find((sec) => sec.id === sectionId)
-  return s ? `Section ${s.num} (${s.title})` : sectionId
+  // Plain "Section N — Titre" — some section titles already contain their
+  // own parentheses (ex. "Toi (la personne)"), so wrapping the whole title
+  // in a second pair used to produce an ugly "Section 1 (Toi (la personne))".
+  return s ? `Section ${s.num} — ${s.title}` : sectionId
 }
 
 export function fieldLabelFor(sectionId, key) {
