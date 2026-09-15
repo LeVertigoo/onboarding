@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase.js'
-import { buildRecapSections } from './recap.jsx'
+import { buildRecapSections, toMarkdown } from './recap.jsx'
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -9,6 +9,19 @@ function formatDate(iso) {
   } catch {
     return iso
   }
+}
+
+function downloadMarkdownFor(row) {
+  const md = toMarkdown(row.answers || {}, row.client_name)
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `workbook-${(row.client_name || 'refonte-1500').trim().replace(/\s+/g, '-').toLowerCase()}.md`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 function SubmissionDetail({ row }) {
@@ -24,9 +37,14 @@ function SubmissionDetail({ row }) {
             {formatDate(row.created_at)}
           </div>
         </div>
-        <button className="btn-secondary admin-print-btn" onClick={() => window.print()}>
-          Télécharger en PDF
-        </button>
+        <div className="admin-detail-actions">
+          <button className="btn-secondary admin-md-btn" onClick={() => downloadMarkdownFor(row)}>
+            Télécharger en .md
+          </button>
+          <button className="btn-secondary admin-print-btn" onClick={() => window.print()}>
+            Télécharger en PDF
+          </button>
+        </div>
       </div>
 
       {recapSections.map((s) => (
