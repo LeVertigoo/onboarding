@@ -29,14 +29,30 @@ function downloadMarkdownFor(row) {
   URL.revokeObjectURL(url)
 }
 
-function SubmissionDetail({ row }) {
+export function SubmissionDetail({ row }) {
   const answers = row.answers || {}
   const recapSections = buildRecapSections(answers)
   const filledIds = new Set(recapSections.map((s) => s.id))
   const hasMotDeLaFin = !!answers.final?.mot_de_la_fin
 
-  const scrollToAnchor = (anchorId) => {
-    document.getElementById(anchorId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // Accordion: at most one section open at a time. Collapsed content stays
+  // in the DOM (just CSS-hidden, never unmounted) so "Télécharger en PDF"
+  // still prints everything regardless of what's open on screen — see the
+  // `.admin-section-body` print override in index.css. The tradeoff is that
+  // Cmd/Ctrl+F only finds text inside the currently open section.
+  const [openId, setOpenIdState] = useState(null)
+
+  const toggleSection = (anchorId) => {
+    setOpenIdState((prev) => {
+      const next = prev === anchorId ? null : anchorId
+      if (next) {
+        // let the section expand first, then scroll it into view
+        setTimeout(() => {
+          document.getElementById(anchorId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 30)
+      }
+      return next
+    })
   }
 
   return (
@@ -59,21 +75,25 @@ function SubmissionDetail({ row }) {
         </div>
       </div>
 
-      {/* Nav mirrors the client-side sidebar/checklist: click to jump straight
-          to a section instead of scrolling through the whole submission. All
-          sections stay in the DOM (nothing is hidden/paginated), so this is
-          purely additive — Ctrl/Cmd+F still searches everything, and PDF
-          print/export is untouched. */}
+      {/* Nav mirrors the client-side sidebar/checklist. Clicking a section
+          opens it (closing whatever was open) and scrolls it into view;
+          clicking the open one again closes it. All section bodies stay in
+          the DOM either way — see the toggleSection comment above. */}
       <div className="admin-detail-layout">
         <nav className="admin-detail-nav">
           {navSections.map((s) => {
+            const anchorId = `admin-anchor-${s.id}`
             const filled = filledIds.has(s.id)
             return (
               <button
                 key={s.id}
                 type="button"
-                className={'admin-nav-item' + (filled ? '' : ' admin-nav-item-empty')}
-                onClick={() => scrollToAnchor(`admin-anchor-${s.id}`)}
+                className={
+                  'admin-nav-item' +
+                  (filled ? '' : ' admin-nav-item-empty') +
+                  (openId === anchorId ? ' admin-nav-item-active' : '')
+                }
+                onClick={() => toggleSection(anchorId)}
                 title={filled ? undefined : 'Section non remplie'}
               >
                 <span className="admin-nav-dot">{filled ? '●' : '○'}</span>
@@ -84,8 +104,8 @@ function SubmissionDetail({ row }) {
           {hasMotDeLaFin && (
             <button
               type="button"
-              className="admin-nav-item"
-              onClick={() => scrollToAnchor('admin-anchor-final')}
+              className={'admin-nav-item' + (openId === 'admin-anchor-final' ? ' admin-nav-item-active' : '')}
+              onClick={() => toggleSection('admin-anchor-final')}
             >
               <span className="admin-nav-dot">●</span>
               <span>Le mot de la fin</span>
@@ -94,33 +114,58 @@ function SubmissionDetail({ row }) {
         </nav>
 
         <div className="admin-detail-main">
-          {recapSections.map((s) => (
-            <div className="admin-section" id={`admin-anchor-${s.id}`} key={s.id}>
-              <div className="admin-section-title">{s.title}</div>
-              {s.preamble.map((e) => (
-                <div className="admin-field" key={'preamble-' + e.label}>
-                  <span className="admin-field-label">{e.label}</span>
-                  <span className="admin-field-value">{e.value}</span>
-                </div>
-              ))}
-              {s.items.map((item) => (
-                <div className={s.isRepeat ? 'admin-repeat-item' : ''} key={item.index}>
-                  {s.isRepeat && <div className="admin-repeat-num">#{item.index + 1}</div>}
-                  {item.entries.map((e) => (
-                    <div className="admin-field" key={e.label}>
+          {recapSections.map((s) => {
+            const anchorId = `admin-anchor-${s.id}`
+            const isOpen = openId === anchorId
+            return (
+              <div className="admin-section" id={anchorId} key={s.id}>
+                <button
+                  type="button"
+                  className={'admin-section-title admin-section-toggle' + (isOpen ? ' admin-section-toggle-open' : '')}
+                  onClick={() => toggleSection(anchorId)}
+                >
+                  <span className="admin-section-chevron">▸</span>
+                  {s.title}
+                </button>
+                <div className={'admin-section-body' + (isOpen ? ' admin-section-body-open' : '')}>
+                  {s.preamble.map((e) => (
+                    <div className="admin-field" key={'preamble-' + e.label}>
                       <span className="admin-field-label">{e.label}</span>
                       <span className="admin-field-value">{e.value}</span>
                     </div>
                   ))}
+                  {s.items.map((item) => (
+                    <div className={s.isRepeat ? 'admin-repeat-item' : ''} key={item.index}>
+                      {s.isRepeat && <div className="admin-repeat-num">#{item.index + 1}</div>}
+                      {item.entries.map((e) => (
+                        <div className="admin-field" key={e.label}>
+                          <span className="admin-field-label">{e.label}</span>
+                          <span className="admin-field-value">{e.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ))}
+              </div>
+            )
+          })}
 
           {hasMotDeLaFin && (
             <div className="admin-section" id="admin-anchor-final">
-              <div className="admin-section-title">Le mot de la fin</div>
-              <div className="admin-field-value">{answers.final.mot_de_la_fin}</div>
+              <button
+                type="button"
+                className={
+                  'admin-section-title admin-section-toggle' +
+                  (openId === 'admin-anchor-final' ? ' admin-section-toggle-open' : '')
+                }
+                onClick={() => toggleSection('admin-anchor-final')}
+              >
+                <span className="admin-section-chevron">▸</span>
+                Le mot de la fin
+              </button>
+              <div className={'admin-section-body' + (openId === 'admin-anchor-final' ? ' admin-section-body-open' : '')}>
+                <div className="admin-field-value">{answers.final.mot_de_la_fin}</div>
+              </div>
             </div>
           )}
         </div>
