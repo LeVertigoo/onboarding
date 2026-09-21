@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase.js'
+import { sections } from './data.js'
 import { buildRecapSections, toMarkdown } from './recap.jsx'
+
+// Same section list the client sidebar uses (minus intro/final), so the
+// admin nav mirrors "le workbook de base côté client" 1:1.
+const navSections = sections.filter((s) => s.kind !== 'intro' && s.kind !== 'final')
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -27,6 +32,13 @@ function downloadMarkdownFor(row) {
 function SubmissionDetail({ row }) {
   const answers = row.answers || {}
   const recapSections = buildRecapSections(answers)
+  const filledIds = new Set(recapSections.map((s) => s.id))
+  const hasMotDeLaFin = !!answers.final?.mot_de_la_fin
+
+  const scrollToAnchor = (anchorId) => {
+    document.getElementById(anchorId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="admin-detail">
       <div className="admin-detail-header">
@@ -47,35 +59,72 @@ function SubmissionDetail({ row }) {
         </div>
       </div>
 
-      {recapSections.map((s) => (
-        <div className="admin-section" key={s.id}>
-          <div className="admin-section-title">{s.title}</div>
-          {s.preamble.map((e) => (
-            <div className="admin-field" key={'preamble-' + e.label}>
-              <span className="admin-field-label">{e.label}</span>
-              <span className="admin-field-value">{e.value}</span>
-            </div>
-          ))}
-          {s.items.map((item) => (
-            <div className={s.isRepeat ? 'admin-repeat-item' : ''} key={item.index}>
-              {s.isRepeat && <div className="admin-repeat-num">#{item.index + 1}</div>}
-              {item.entries.map((e) => (
-                <div className="admin-field" key={e.label}>
+      {/* Nav mirrors the client-side sidebar/checklist: click to jump straight
+          to a section instead of scrolling through the whole submission. All
+          sections stay in the DOM (nothing is hidden/paginated), so this is
+          purely additive — Ctrl/Cmd+F still searches everything, and PDF
+          print/export is untouched. */}
+      <div className="admin-detail-layout">
+        <nav className="admin-detail-nav">
+          {navSections.map((s) => {
+            const filled = filledIds.has(s.id)
+            return (
+              <button
+                key={s.id}
+                type="button"
+                className={'admin-nav-item' + (filled ? '' : ' admin-nav-item-empty')}
+                onClick={() => scrollToAnchor(`admin-anchor-${s.id}`)}
+                title={filled ? undefined : 'Section non remplie'}
+              >
+                <span className="admin-nav-dot">{filled ? '●' : '○'}</span>
+                <span>{s.title}</span>
+              </button>
+            )
+          })}
+          {hasMotDeLaFin && (
+            <button
+              type="button"
+              className="admin-nav-item"
+              onClick={() => scrollToAnchor('admin-anchor-final')}
+            >
+              <span className="admin-nav-dot">●</span>
+              <span>Le mot de la fin</span>
+            </button>
+          )}
+        </nav>
+
+        <div className="admin-detail-main">
+          {recapSections.map((s) => (
+            <div className="admin-section" id={`admin-anchor-${s.id}`} key={s.id}>
+              <div className="admin-section-title">{s.title}</div>
+              {s.preamble.map((e) => (
+                <div className="admin-field" key={'preamble-' + e.label}>
                   <span className="admin-field-label">{e.label}</span>
                   <span className="admin-field-value">{e.value}</span>
                 </div>
               ))}
+              {s.items.map((item) => (
+                <div className={s.isRepeat ? 'admin-repeat-item' : ''} key={item.index}>
+                  {s.isRepeat && <div className="admin-repeat-num">#{item.index + 1}</div>}
+                  {item.entries.map((e) => (
+                    <div className="admin-field" key={e.label}>
+                      <span className="admin-field-label">{e.label}</span>
+                      <span className="admin-field-value">{e.value}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           ))}
-        </div>
-      ))}
 
-      {answers.final?.mot_de_la_fin && (
-        <div className="admin-section">
-          <div className="admin-section-title">Le mot de la fin</div>
-          <div className="admin-field-value">{answers.final.mot_de_la_fin}</div>
+          {hasMotDeLaFin && (
+            <div className="admin-section" id="admin-anchor-final">
+              <div className="admin-section-title">Le mot de la fin</div>
+              <div className="admin-field-value">{answers.final.mot_de_la_fin}</div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
