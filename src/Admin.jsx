@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase.js'
-import { sections } from './data.js'
+import { sections as volet1Sections, WORKBOOK_TITLE as volet1Title } from './data.js'
+import { buildContenuSections, CONTENU_TITLE } from './dataContenu.js'
 import { buildRecapSections, toMarkdown } from './recap.jsx'
-
-// Same section list the client sidebar uses (minus intro/final), so the
-// admin nav mirrors "le workbook de base côté client" 1:1.
-const navSections = sections.filter((s) => s.kind !== 'intro' && s.kind !== 'final')
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -16,38 +13,47 @@ function formatDate(iso) {
   }
 }
 
+function sectionsAndTitleFor(row) {
+  if (row.workbook_type === 'contenu') {
+    const route = row.answers?.route?.route
+    return { sections: buildContenuSections(route), title: CONTENU_TITLE }
+  }
+  // 'refonte_1500' et toute ancienne ligne sans workbook_type reconnu :
+  // comportement identique à avant cette refonte.
+  return { sections: volet1Sections, title: volet1Title }
+}
+
 function downloadMarkdownFor(row) {
-  const md = toMarkdown(row.answers || {}, row.client_name)
+  const { sections, title } = sectionsAndTitleFor(row)
+  const md = toMarkdown(row.answers || {}, row.client_name, sections, title)
   const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `workbook-${(row.client_name || 'refonte-1500').trim().replace(/\s+/g, '-').toLowerCase()}.md`
+  a.download = `workbook-${(row.client_name || 'kalanis').trim().replace(/\s+/g, '-').toLowerCase()}-${row.workbook_type}.md`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 
+// Inchangé dans son fonctionnement (accordéon, impression PDF, export .md) —
+// seule différence : les sections/titre viennent du volet de `row` au lieu
+// d'être toujours ceux du volet 1.
 export function SubmissionDetail({ row }) {
+  const { sections, title } = sectionsAndTitleFor(row)
+  const navSections = sections.filter((s) => s.kind !== 'intro' && s.kind !== 'final')
   const answers = row.answers || {}
-  const recapSections = buildRecapSections(answers)
+  const recapSections = buildRecapSections(answers, sections)
   const recapById = new Map(recapSections.map((s) => [s.id, s]))
   const hasMotDeLaFin = !!answers.final?.mot_de_la_fin
 
-  // One combined list, no separate side menu: each row is both the "menu"
-  // entry and the section itself, and clicking it expands the answers
-  // directly underneath, in place. At most one open at a time. Collapsed
-  // content stays in the DOM (just CSS-hidden, never unmounted) so
-  // "Télécharger en PDF" still prints everything regardless of what's open
-  // on screen — see the `.admin-section-body` print override in index.css.
-  // Tradeoff: Cmd/Ctrl+F only finds text inside the currently open section.
   const [openId, setOpenIdState] = useState(null)
   const toggleSection = (anchorId) => {
     setOpenIdState((prev) => (prev === anchorId ? null : anchorId))
   }
 
-  const renderRow = (anchorId, title, filled, body) => {
+  const renderRow = (anchorId, sectionTitle, filled, body) => {
     const isOpen = openId === anchorId
     return (
       <div className="admin-section" id={anchorId} key={anchorId}>
@@ -58,7 +64,7 @@ export function SubmissionDetail({ row }) {
         >
           <span className="admin-section-chevron">▸</span>
           <span className="admin-nav-dot">{filled ? '●' : '○'}</span>
-          {title}
+          {sectionTitle}
         </button>
         <div className={'admin-section-body' + (isOpen ? ' admin-section-body-open' : '')}>{body}</div>
       </div>
@@ -69,10 +75,10 @@ export function SubmissionDetail({ row }) {
     <div className="admin-detail">
       <div className="admin-detail-header">
         <div>
-          <div className="admin-detail-name">{row.client_name || 'Sans nom'}</div>
+          <div className="admin-detail-name">{title}</div>
           <div className="admin-detail-meta">
-            {row.client_email ? `${row.client_email} · ` : ''}
-            {formatDate(row.created_at)}
+            {row.status === 'draft' ? 'Brouillon en cours · ' : ''}
+            {formatDate(row.updated_at || row.created_at)}
           </div>
         </div>
         <div className="admin-detail-actions">
@@ -87,7 +93,7 @@ export function SubmissionDetail({ row }) {
 
       <div className="admin-detail-list">
         {navSections.map((s) => {
-          const anchorId = `admin-anchor-${s.id}`
+          const anchorId = `admin-anchor-${row.id}-${s.id}`
           const recap = recapById.get(s.id)
           const body = recap ? (
             <>
@@ -117,7 +123,7 @@ export function SubmissionDetail({ row }) {
 
         {hasMotDeLaFin &&
           renderRow(
-            'admin-anchor-final',
+            `admin-anchor-${row.id}-final`,
             'Le mot de la fin',
             true,
             <div className="admin-field-value">{answers.final.mot_de_la_fin}</div>
@@ -125,6 +131,44 @@ export function SubmissionDetail({ row }) {
       </div>
     </div>
   )
+}
+
+function normKey(row) {
+  const email = (row.client_email || '').trim().toLowerCase()
+  if (email) return `email:${email}`
+  return `name:${(row.client_name || 'sans-nom').trim().toLowerCase()}`
+}
+
+function voletBadge(row) {
+  if (!row) return { label: 'Pas commencé', cls: '' }
+  if (row.status === 'draft') return { label: 'Brouillon', cls: 'step-active' }
+  return { label: 'Terminé', cls: 'step-done' }
+}
+
+// Regroupe les lignes par client (email en priorité, nom en repli pour les
+// lignes historiques sans email) : chaque client a au plus une ligne par
+// volet (refonte_1500 / contenu), ouvrables séparément — remplace l'ancienne
+// liste plate "une ligne = une soumission".
+function groupByClient(rows) {
+  const groups = new Map()
+  rows.forEach((row) => {
+    const key = normKey(row)
+    if (!groups.has(key)) {
+      groups.set(key, { key, clientName: row.client_name, clientEmail: row.client_email, volets: {}, lastActivity: '' })
+    }
+    const g = groups.get(key)
+    const existing = g.volets[row.workbook_type]
+    // S'il y a déjà une ligne pour ce volet (ne devrait plus arriver avec le
+    // nouveau système d'upsert, sauf vieilles données), on garde la plus récente.
+    if (!existing || new Date(row.updated_at || row.created_at) > new Date(existing.updated_at || existing.created_at)) {
+      g.volets[row.workbook_type] = row
+    }
+    const activity = row.updated_at || row.created_at
+    if (!g.lastActivity || new Date(activity) > new Date(g.lastActivity)) g.lastActivity = activity
+    if (row.client_name) g.clientName = row.client_name
+    if (row.client_email) g.clientEmail = row.client_email
+  })
+  return Array.from(groups.values()).sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity))
 }
 
 export default function Admin() {
@@ -135,7 +179,8 @@ export default function Admin() {
   const [loginError, setLoginError] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
-  const [openId, setOpenId] = useState(null)
+  const [openClientKey, setOpenClientKey] = useState(null)
+  const [openVolet, setOpenVolet] = useState(null) // 'refonte_1500' | 'contenu' | null
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -163,7 +208,7 @@ export default function Admin() {
     e.preventDefault()
     setLoginError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setLoginError("Identifiants incorrects.")
+    if (error) setLoginError('Identifiants incorrects.')
   }
 
   const handleLogout = async () => {
@@ -206,6 +251,8 @@ export default function Admin() {
     )
   }
 
+  const clientGroups = groupByClient(rows)
+
   return (
     <div className="admin-shell">
       <div className="admin-topbar">
@@ -216,21 +263,54 @@ export default function Admin() {
       </div>
 
       {loading && <p>Chargement...</p>}
-      {!loading && rows.length === 0 && <p>Aucune réponse pour l'instant.</p>}
+      {!loading && clientGroups.length === 0 && <p>Aucune réponse pour l'instant.</p>}
 
       <div className="admin-list">
-        {rows.map((row) => (
-          <div className="admin-list-item" key={row.id}>
-            <button
-              className="admin-list-header"
-              onClick={() => setOpenId(openId === row.id ? null : row.id)}
-            >
-              <span>{row.client_name || 'Sans nom'}</span>
-              <span className="admin-list-date">{formatDate(row.created_at)}</span>
-            </button>
-            {openId === row.id && <SubmissionDetail row={row} />}
-          </div>
-        ))}
+        {clientGroups.map((g) => {
+          const isOpen = openClientKey === g.key
+          const b1 = voletBadge(g.volets.refonte_1500)
+          const b2 = voletBadge(g.volets.contenu)
+          return (
+            <div className="admin-list-item" key={g.key}>
+              <button
+                className="admin-list-header"
+                onClick={() => {
+                  setOpenClientKey(isOpen ? null : g.key)
+                  setOpenVolet(null)
+                }}
+              >
+                <span>
+                  {g.clientName || 'Sans nom'}
+                  {g.clientEmail ? ` · ${g.clientEmail}` : ''}
+                </span>
+                <span className="admin-list-date">{formatDate(g.lastActivity)}</span>
+              </button>
+
+              {isOpen && (
+                <div style={{ padding: '12px 16px', display: 'flex', gap: 10 }}>
+                  <button
+                    className={'step' + (openVolet === 'refonte_1500' ? ' step-active' : '')}
+                    onClick={() => setOpenVolet(openVolet === 'refonte_1500' ? null : 'refonte_1500')}
+                    disabled={!g.volets.refonte_1500}
+                  >
+                    <span className="step-label">Volet 1 — Cadrage & Refonte ({b1.label})</span>
+                  </button>
+                  <button
+                    className={'step' + (openVolet === 'contenu' ? ' step-active' : '')}
+                    onClick={() => setOpenVolet(openVolet === 'contenu' ? null : 'contenu')}
+                    disabled={!g.volets.contenu}
+                  >
+                    <span className="step-label">Volet 2 — Création de contenu ({b2.label})</span>
+                  </button>
+                </div>
+              )}
+
+              {isOpen && openVolet && g.volets[openVolet] && (
+                <SubmissionDetail row={g.volets[openVolet]} />
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

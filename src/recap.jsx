@@ -1,40 +1,45 @@
-import { sections, WORKBOOK_TITLE } from './data.js'
+import { sections as defaultSections, WORKBOOK_TITLE as defaultTitle } from './data.js'
 
-// Shared recap logic — used by the client-side "download my answers" view in
-// App.jsx (fed by the local `payload` state) and the admin viewer, since both
-// work off the same structured-by-section shape:
+// Shared recap logic — used by the client-side "download my answers" view
+// (App.jsx / Contenu.jsx, fed by each workbook's local `payload` state) and
+// the admin viewer, since both work off the same structured-by-section shape:
 // { sectionId: { field: value } } for single sections, or
 // { sectionId: { fields: { field: value }, items: [{ field: value }, ...] } }
 // for repeat sections (`fields` holds any preamble fields shown once above
 // the repeated cards, e.g. "combien de clients" before the client list —
 // empty object when the section has none).
+//
+// Every function here defaults to the volet 1 ("Refonte 1500€") sections/title
+// when no `sections`/`title` override is passed, so every existing call site
+// keeps behaving exactly as before. The new volet "Création de contenu"
+// (Contenu.jsx) passes its own sections/title explicitly instead.
 
-export function sectionTitleFor(sectionId) {
-  const s = sections.find((sec) => sec.id === sectionId)
+export function sectionTitleFor(sectionId, sectionsList = defaultSections) {
+  const s = sectionsList.find((sec) => sec.id === sectionId)
   // Plain "Section N — Titre" — some section titles already contain their
   // own parentheses (ex. "Toi (la personne)"), so wrapping the whole title
   // in a second pair used to produce an ugly "Section 1 (Toi (la personne))".
   return s ? `Section ${s.num} — ${s.title}` : sectionId
 }
 
-export function fieldLabelFor(sectionId, key) {
-  const s = sections.find((sec) => sec.id === sectionId)
+export function fieldLabelFor(sectionId, key, sectionsList = defaultSections) {
+  const s = sectionsList.find((sec) => sec.id === sectionId)
   if (!s) return key
   const fields = s.kind === 'repeat' ? s.repeatFields : s.fields
   const f = fields?.find((fl) => fl.key === key)
   return f ? f.label : key
 }
 
-function preambleFieldLabelFor(sectionId, key) {
-  const s = sections.find((sec) => sec.id === sectionId)
+function preambleFieldLabelFor(sectionId, key, sectionsList) {
+  const s = sectionsList.find((sec) => sec.id === sectionId)
   const f = s?.fields?.find((fl) => fl.key === key)
   return f ? f.label : key
 }
 
 // Reshapes the answers into { id, title, isRepeat, preamble: [{label,value}], items: [{ index, entries: [{label,value}] }] },
 // skipping intro/final sections and anything left empty.
-export function buildRecapSections(answers) {
-  return sections
+export function buildRecapSections(answers, sectionsList = defaultSections) {
+  return sectionsList
     .filter((s) => s.kind !== 'intro' && s.kind !== 'final')
     .map((s) => {
       const value = answers[s.id]
@@ -48,33 +53,33 @@ export function buildRecapSections(answers) {
         const fieldsObj = value.fields || {}
         preamble = Object.entries(fieldsObj)
           .filter(([, v]) => v && String(v).trim())
-          .map(([k, v]) => ({ label: preambleFieldLabelFor(s.id, k), value: v }))
+          .map(([k, v]) => ({ label: preambleFieldLabelFor(s.id, k, sectionsList), value: v }))
         const rawItems = Array.isArray(value.items) ? value.items : Array.isArray(value) ? value : []
         items = rawItems
           .map((item, i) => ({
             index: i,
             entries: Object.entries(item || {})
               .filter(([, v]) => v && String(v).trim())
-              .map(([k, v]) => ({ label: fieldLabelFor(s.id, k), value: v })),
+              .map(([k, v]) => ({ label: fieldLabelFor(s.id, k, sectionsList), value: v })),
           }))
           .filter((it) => it.entries.length > 0)
       } else {
         const entries = Object.entries(value || {})
           .filter(([, v]) => v && String(v).trim())
-          .map(([k, v]) => ({ label: fieldLabelFor(s.id, k), value: v }))
+          .map(([k, v]) => ({ label: fieldLabelFor(s.id, k, sectionsList), value: v }))
         items = entries.length > 0 ? [{ index: 0, entries }] : []
       }
 
       if (preamble.length === 0 && items.length === 0) return null
-      return { id: s.id, title: sectionTitleFor(s.id), isRepeat, preamble, items }
+      return { id: s.id, title: sectionTitleFor(s.id, sectionsList), isRepeat, preamble, items }
     })
     .filter(Boolean)
 }
 
-export function toMarkdown(answers, clientName) {
-  const recapSections = buildRecapSections(answers)
+export function toMarkdown(answers, clientName, sectionsList = defaultSections, title = defaultTitle) {
+  const recapSections = buildRecapSections(answers, sectionsList)
   const lines = []
-  lines.push(`# ${WORKBOOK_TITLE}`)
+  lines.push(`# ${title}`)
   if (clientName) lines.push(`**Client :** ${clientName}`)
   lines.push('')
   recapSections.forEach((s) => {
@@ -107,11 +112,11 @@ export function toMarkdown(answers, clientName) {
   return lines.join('\n')
 }
 
-export function RecapContent({ answers, clientName }) {
-  const recapSections = buildRecapSections(answers)
+export function RecapContent({ answers, clientName, sections: sectionsList = defaultSections, title = defaultTitle }) {
+  const recapSections = buildRecapSections(answers, sectionsList)
   return (
     <div className="recap-print">
-      <div className="recap-print-title">{WORKBOOK_TITLE}</div>
+      <div className="recap-print-title">{title}</div>
       {clientName && <div className="recap-print-client">{clientName}</div>}
       {recapSections.map((s) => (
         <div className="admin-section" key={s.id}>

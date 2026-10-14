@@ -181,7 +181,7 @@ function ChecklistCard({ items, filledIds, onJump }) {
   )
 }
 
-export default function App() {
+export default function App({ onBackToEspace } = {}) {
   const [draftRestored] = useState(() => !!loadDraft())
   const [draftBannerDismissed, setDraftBannerDismissed] = useState(false)
   const [stepIndex, setStepIndex] = useState(() => loadDraft()?.stepIndex ?? 0)
@@ -272,6 +272,7 @@ export default function App() {
     setStatus('sending')
     const { error } = await supabase.from('client_workbooks').insert({
       client_name: clientName,
+      client_email: (answers['intro.client_email'] || '').trim().toLowerCase(),
       workbook_type: 'refonte_1500',
       answers: payload,
     })
@@ -430,6 +431,11 @@ export default function App() {
                     Réponses enregistrées, merci{clientName ? `, ${clientName}` : ''}.
                   </div>
                   <div className="download-actions">
+                    {onBackToEspace && (
+                      <button className="btn-secondary" onClick={onBackToEspace}>
+                        ← Retour à mon espace
+                      </button>
+                    )}
                     <button className="btn-secondary" onClick={() => window.print()}>
                       Télécharger en PDF
                     </button>
