@@ -3,13 +3,13 @@ import { supabase } from './supabase.js'
 import { RecapContent, toMarkdown, buildRecapSections } from './recap.jsx'
 import { CONTENU_TITLE, routeSection, buildContenuSections } from './dataContenu.js'
 
-// Volet 2 — "Création de contenu". Même logique de moteur que App.jsx
+// Volet 2 ("Création de contenu"). Même logique de moteur que App.jsx
 // (volet 1), VOLONTAIREMENT dupliquée plutôt que partagée : ça évite de
 // toucher à App.jsx (zéro risque de régression sur le volet existant) au
 // prix d'un peu de code en double. Différences principales : la liste des
 // sections dépend de la réponse à la question de branchement (`route`), et
-// une section 'repeat' (ex. "Visuels, besoins et envies" → inspirations
-// multiples) est possible comme côté volet 1.
+// une section 'repeat' (ex. "Tes inspirations visuelles") peut avoir
+// plusieurs cartes, comme côté volet 1.
 //
 // Les brouillons et la soumission finale passent par les fonctions SQL
 // save_draft / complete_workbook (voir supabase/migration_espace_client.sql)
@@ -40,12 +40,39 @@ function visibleFields(fields, sectionId, answers) {
   })
 }
 
+// Clé du brouillon local de secours : écrite uniquement quand la sauvegarde
+// en base (save_draft) échoue (hors-ligne, etc.), et relue au montage pour
+// ne pas perdre ces réponses si le client revient avant qu'une sauvegarde en
+// base n'ait réussi. Elle est effacée dès qu'une sauvegarde en base aboutit
+// (brouillon ou soumission finale), pour ne jamais faire resurgir une
+// version locale périmée par-dessus des réponses plus récentes côté serveur.
 const DRAFT_FALLBACK_KEY = 'kalanis-workbook-contenu-draft-fallback-v1'
+
+function readDraftFallback() {
+  try {
+    const raw = localStorage.getItem(DRAFT_FALLBACK_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function clearDraftFallback() {
+  try {
+    localStorage.removeItem(DRAFT_FALLBACK_KEY)
+  } catch {
+    // Rien à faire.
+  }
+}
 
 // Reconstruit l'état "plat" (utilisé pendant l'édition) à partir de la forme
 // structurée stockée en base (celle utilisée par le récap / l'admin / le
 // brouillon), y compris les sections 'repeat' (reconstruction de
-// extraCounts à partir du nombre d'items déjà enregistrés).
+// extraCounts à partir du nombre d'items déjà enregistrés). `__meta` retient
+// l'étape où le client s'était arrêté (même principe que App.jsx) : elle ne
+// correspond à aucune section réelle, donc ignorée partout ailleurs.
 function structuredToFlat(structured, sectionsList) {
   const flat = {}
   const extraCounts = {}
@@ -70,7 +97,8 @@ function structuredToFlat(structured, sectionsList) {
       })
     }
   })
-  return { flat, extraCounts }
+  const stepIndex = structured?.__meta?.stepIndex ?? 0
+  return { flat, extraCounts, stepIndex }
 }
 
 // Même logique que App.jsx (voir OptionRow là-bas) : bulles compactes, ou
@@ -141,18 +169,34 @@ function Field({ label, type, placeholder, value, onChange, rows, options }) {
 export default function Contenu({ email, clientName, initialAnswers, initialStatus, onBackToEspace }) {
   const alreadyDone = initialStatus === 'completed'
 
-  const [stepIndex, setStepIndex] = useState(0)
-  const [answers, setAnswers] = useState(() => structuredToFlat(initialAnswers || {}, [routeSection]).flat)
-  const [extraCounts, setExtraCounts] = useState({})
+  // Priorité aux réponses côté base (`initialAnswers`, fetchées par
+  // Volet2Loader) ; si la base n'en a aucune (aucun brouillon ni
+  // soumission), on retombe sur un éventuel brouillon local de secours
+  // (écrit uniquement quand une sauvegarde en base a échoué) pour ne pas
+  // perdre ce que le client avait tapé pendant une coupure réseau.
+  const [hydration] = useState(() => {
+    const baseline = structuredToFlat(initialAnswers || {}, [routeSection])
+    if (Object.keys(baseline.flat).length > 0) return baseline
+    const fallback = readDraftFallback()
+    if (fallback) {
+      return { flat: fallback.answers || {}, extraCounts: fallback.extraCounts || {}, stepIndex: fallback.stepIndex || 0 }
+    }
+    return baseline
+  })
+
+  const [stepIndex, setStepIndex] = useState(hydration.stepIndex)
+  const [answers, setAnswers] = useState(hydration.flat)
+  const [extraCounts, setExtraCounts] = useState(hydration.extraCounts)
   const [status, setStatus] = useState(alreadyDone ? 'done' : 'idle')
 
   const routeAnswer = answers[fieldKey('route', undefined, 'route')]
 
   // Une fois la route connue, on complète l'état plat (et les extraCounts)
   // avec les champs des sections de cette route, au cas où un brouillon
-  // existait déjà dessus.
+  // existait déjà dessus. Se déclenche aussi pour un volet déjà terminé
+  // (alreadyDone), sinon la réponse rouverte afficherait un récap vide.
   useEffect(() => {
-    if (!routeAnswer || alreadyDone) return
+    if (!routeAnswer) return
     const fullSections = buildContenuSections(routeAnswer)
     const { flat, extraCounts: counts } = structuredToFlat(initialAnswers || {}, fullSections)
     setAnswers((prev) => ({ ...flat, ...prev }))
@@ -164,7 +208,12 @@ export default function Contenu({ email, clientName, initialAnswers, initialStat
 
   const section = fullSections[Math.min(stepIndex, fullSections.length - 1)]
   const total = fullSections.length
-  const isLast = stepIndex === total - 1
+  // Tant que la route n'est pas choisie, `fullSections` ne contient que la
+  // question de branchement (longueur 1) : sans la condition sur
+  // `routeAnswer`, `isLast` serait vrai dès le premier écran et le bouton
+  // "Envoyer mes réponses" apparaîtrait avant même que le client ait
+  // répondu à quoi que ce soit.
+  const isLast = !!routeAnswer && stepIndex === total - 1
 
   const repeatCountFor = (s) => extraCounts[s.id] ?? s.repeatCount
 
@@ -204,8 +253,12 @@ export default function Contenu({ email, clientName, initialAnswers, initialStat
     return structured
   }, [answers, extraCounts, fullSections])
 
-  // Brouillon : sauvegardé en base (reprise multi-appareil), avec un repli
-  // localStorage best-effort si l'appel réseau échoue (hors-ligne, etc.).
+  // Brouillon : sauvegardé en base (reprise multi-appareil, et retient
+  // `__meta.stepIndex` pour reprendre à la bonne section, même principe que
+  // App.jsx), avec un repli localStorage best-effort si l'appel réseau
+  // échoue (hors-ligne, etc.). Le repli local est effacé dès qu'une
+  // sauvegarde en base réussit, pour ne jamais le faire resurgir par-dessus
+  // des réponses plus récentes.
   useEffect(() => {
     if (status === 'done' || !routeAnswer) return
     const id = setTimeout(() => {
@@ -214,7 +267,7 @@ export default function Contenu({ email, clientName, initialAnswers, initialStat
           p_email: email,
           p_client_name: clientName,
           p_workbook_type: WORKBOOK_TYPE,
-          p_answers: payload,
+          p_answers: { ...payload, __meta: { stepIndex } },
         })
         .then(({ error }) => {
           if (error) {
@@ -223,6 +276,8 @@ export default function Contenu({ email, clientName, initialAnswers, initialStat
             } catch {
               // best-effort uniquement
             }
+          } else {
+            clearDraftFallback()
           }
         })
     }, 600)
@@ -246,6 +301,15 @@ export default function Contenu({ email, clientName, initialAnswers, initialStat
       setStatus('error')
     } else {
       setStatus('done')
+      clearDraftFallback()
+      // Notification Slack best-effort, même principe que App.jsx : ne
+      // bloque jamais la soumission et n'échoue jamais visiblement si elle
+      // rate (ex. webhook pas encore configuré).
+      fetch('/api/notify-slack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientName, clientEmail: email, workbookLabel: 'Création de contenu' }),
+      }).catch(() => {})
     }
   }
 
