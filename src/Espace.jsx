@@ -6,6 +6,49 @@ import { RecapContent, buildRecapSections } from './recap.jsx'
 
 const LEGACY_DRAFT_KEY = 'kalanis-workbook-refonte-1500-draft-v1'
 
+// Reconstruit les réponses structurées d'un brouillon local du volet 1 créé
+// avant l'arrivée de l'espace client (clé fixe, sans email, lue via
+// localStorage dans ce même navigateur). Sans cette reconstruction, le statut
+// pouvait afficher "En cours" pour ce brouillon tout en restant bloqué à 0 %,
+// faute d'accès à son contenu pour calculer une vraie progression.
+function legacyDraftAnswers() {
+  try {
+    const raw = localStorage.getItem(LEGACY_DRAFT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const flat = parsed?.answers
+    if (!flat || typeof flat !== 'object') return null
+    const extraCounts = parsed.extraCounts || {}
+    const structured = {}
+    volet1Sections.forEach((s) => {
+      if (s.kind === 'repeat') {
+        const count = extraCounts[s.id] ?? s.repeatCount
+        const items = Array.from({ length: count }).map((_, i) => {
+          const obj = {}
+          s.repeatFields.forEach((f) => {
+            obj[f.key] = flat[`${s.id}.${i}.${f.key}`] || ''
+          })
+          return obj
+        })
+        const fieldsObj = {}
+        ;(s.fields || []).forEach((f) => {
+          fieldsObj[f.key] = flat[`${s.id}.${f.key}`] || ''
+        })
+        structured[s.id] = { fields: fieldsObj, items }
+      } else {
+        const obj = {}
+        s.fields.forEach((f) => {
+          obj[f.key] = flat[`${s.id}.${f.key}`] || ''
+        })
+        structured[s.id] = obj
+      }
+    })
+    return structured
+  } catch {
+    return null
+  }
+}
+
 function statusLabel(status) {
   if (status === 'completed') return 'Terminé'
   if (status === 'draft') return 'En cours'
@@ -87,18 +130,20 @@ export default function Espace({ identity, onOpenVolet1, onOpenVolet2, onLogout 
   const row2 = rows.find((r) => r.workbook_type === 'contenu')
 
   let status1 = row1 ? row1.status : 'none'
-  if (status1 === 'none') {
-    try {
-      if (localStorage.getItem(LEGACY_DRAFT_KEY)) status1 = 'draft'
-    } catch {
-      // ignore
-    }
-  }
+  const legacyAnswers = status1 === 'none' ? legacyDraftAnswers() : null
+  if (status1 === 'none' && legacyAnswers) status1 = 'draft'
   const status2 = row2 ? row2.status : 'none'
 
   const route2 = row2?.answers?.route?.route
   const volet2Sections = buildContenuSections(route2)
-  const progress1 = status1 === 'completed' ? 100 : row1 ? computeProgress(row1.answers, volet1Sections) : 0
+  const progress1 =
+    status1 === 'completed'
+      ? 100
+      : row1
+      ? computeProgress(row1.answers, volet1Sections)
+      : legacyAnswers
+      ? computeProgress(legacyAnswers, volet1Sections)
+      : 0
   const progress2 = status2 === 'completed' ? 100 : row2 ? computeProgress(row2.answers, volet2Sections) : 0
 
   if (reviewing === 'v1' && row1) {
@@ -139,7 +184,7 @@ export default function Espace({ identity, onOpenVolet1, onOpenVolet2, onLogout 
   return (
     <div className="admin-shell">
       <div className="admin-topbar">
-        <div className="sidebar-brand">KALANIS — {identity.clientName}</div>
+        <div className="sidebar-brand">KALANIS : {identity.clientName}</div>
         <button className="btn-secondary" onClick={onLogout}>
           Changer de compte
         </button>
@@ -147,13 +192,13 @@ export default function Espace({ identity, onOpenVolet1, onOpenVolet2, onLogout 
 
       <h1>Le Fond de l'Évidence</h1>
       <p className="subtitle">
-        Bienvenue {identity.clientName}. Voici tes deux espaces de réponses — tu peux y revenir à
+        Bienvenue {identity.clientName}. Voici tes deux espaces de réponses, tu peux y revenir à
         tout moment.
       </p>
 
       <div className="admin-list" style={{ display: 'grid', gap: 14 }}>
         <VoletCard
-          title="Volet 1 — Cadrage & Refonte de profil"
+          title="Volet 1 : Cadrage & Refonte de profil"
           description="Le workbook de préparation de ta refonte de profil."
           status={status1}
           progress={progress1}
@@ -161,7 +206,7 @@ export default function Espace({ identity, onOpenVolet1, onOpenVolet2, onLogout 
           onReview={() => setReviewing('v1')}
         />
         <VoletCard
-          title="Volet 2 — Création de contenu"
+          title="Volet 2 : Création de contenu"
           description="La matière pour construire tes templates de contenu."
           status={status2}
           progress={progress2}
