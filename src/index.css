@@ -380,7 +380,7 @@ h1 {
   letter-spacing: 0.04em;
 }
 
-/* ---------------- Espace — cartes volet ---------------- */
+/* ---------------- Espace - cartes volet ---------------- */
 .volet-card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -745,7 +745,7 @@ h1 {
   gap: 10px;
 }
 
-/* Recap content is only ever shown when printing (see @media print below) —
+/* Recap content is only ever shown when printing (see @media print below) -
    on screen it stays hidden right after a successful submission. */
 .client-recap {
   display: none;
@@ -920,10 +920,10 @@ h1 {
   flex-shrink: 0;
 }
 
-/* Single combined list — each row is both the "menu" entry and the section:
+/* Single combined list - each row is both the "menu" entry and the section:
    clicking it expands the answers directly underneath, in place. All rows
    stay rendered (nothing paginated/hidden via unmount), so PDF print still
-   covers the whole submission regardless of what's open on screen — see the
+   covers the whole submission regardless of what's open on screen - see the
    `.admin-section-body` print override further down. */
 .admin-detail-list {
   display: flex;
@@ -982,7 +982,7 @@ h1 {
   margin-bottom: 8px;
 }
 
-/* Accordion toggle — same visual as the static title above, just made
+/* Accordion toggle - same visual as the static title above, just made
    clickable, full-width, with a chevron that rotates on open. */
 .admin-section-toggle {
   display: flex;
@@ -1075,7 +1075,7 @@ h1 {
     max-width: 100%;
   }
   /* Force every section open in the PDF/print output regardless of what's
-     collapsed on screen — the accordion is a screen-only convenience. */
+     collapsed on screen - the accordion is a screen-only convenience. */
   .admin-section-body {
     display: block !important;
   }
@@ -1088,7 +1088,7 @@ h1 {
     display: none;
   }
 
-  /* Client-side "download my answers as PDF" — window.print() is only ever
+  /* Client-side "download my answers as PDF" - window.print() is only ever
      triggered from the final section's success state, so it's safe to hide
      everything in the workbook shell except the hidden recap block. */
   .sidebar,
@@ -1113,7 +1113,7 @@ h1 {
   }
 
   /* ---- Readable print typography for both the client recap and the admin
-     detail view (they share the same admin-* classnames — see recap.jsx) ---- */
+     detail view (they share the same admin-* classnames - see recap.jsx) ---- */
   body {
     font-size: 13px;
     color: #121c28;
