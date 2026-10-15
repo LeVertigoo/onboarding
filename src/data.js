@@ -11,7 +11,7 @@
 // hides it until the sibling field has any value (used for "dis-m'en plus"
 // follow-ups after a choice).
 // A 'repeat' section can also carry a `fields` array (same shape as a
-// 'single' section's fields) : shown once, above the repeated cards — used
+// 'single' section's fields) : shown once, above the repeated cards - used
 // for a question that applies to the whole list rather than to one item
 // (ex. "combien de clients au total" before the client cards).
 // No collapsible "exemple inspirant" boxes in this version, every field
@@ -34,7 +34,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 1 — Toi (la personne)
+  // CHAPITRE 1 - Toi (la personne)
   // ---------------------------------------------------------------------
   {
     id: 'toi',
@@ -154,7 +154,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 2 — Ton parcours (pour la partie "Expériences" du profil)
+  // CHAPITRE 2 - Ton parcours (pour la partie "Expériences" du profil)
   // ---------------------------------------------------------------------
   {
     id: 'parcours',
@@ -167,6 +167,7 @@ export const sections = [
     expandable: true,
     repeatMax: 5,
     repeatLabel: 'Expérience',
+    repeatArticle: 'une',
     repeatFields: [
       { key: 'poste', label: 'Poste / rôle', type: 'text', placeholder: 'Ex. Fondateur, Consultant indépendant, Chef de projet...' },
       { key: 'structure', label: 'Entreprise / structure', type: 'text', placeholder: 'Ex. Kalanis, ou le nom de ton ancien employeur' },
@@ -181,7 +182,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 3 — Ta cible
+  // CHAPITRE 3 - Ta cible
   // ---------------------------------------------------------------------
   {
     id: 'cible',
@@ -234,7 +235,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 4 — Tes preuves
+  // CHAPITRE 4 - Tes preuves
   // ---------------------------------------------------------------------
   {
     id: 'preuves',
@@ -273,7 +274,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 5 — Ton offre & positionnement
+  // CHAPITRE 5 - Ton offre & positionnement
   // ---------------------------------------------------------------------
   {
     id: 'offre_positionnement',
@@ -341,6 +342,7 @@ export const sections = [
     expandable: true,
     repeatMax: 8,
     repeatLabel: 'Étape',
+    repeatArticle: 'une',
     repeatFields: [
       { key: 'nom', label: 'Nom de l\'étape', type: 'text', placeholder: 'Ex. Rapport de clarté' },
       {
@@ -353,7 +355,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 6 — Les profils de tes concurrents
+  // CHAPITRE 6 - Les profils de tes concurrents
   // ---------------------------------------------------------------------
   {
     id: 'concurrents',
@@ -372,7 +374,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 7 — Diagnostic de ton profil actuel
+  // CHAPITRE 7 - Diagnostic de ton profil actuel
   // ---------------------------------------------------------------------
   {
     id: 'diagnostic',
@@ -437,7 +439,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 8 — Tes préférences & envies
+  // CHAPITRE 8 - Tes préférences & envies
   // ---------------------------------------------------------------------
   {
     id: 'preferences_envies',
@@ -491,7 +493,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 9 — Références visuelles
+  // CHAPITRE 9 - Références visuelles
   // ---------------------------------------------------------------------
   {
     id: 'references_visuelles',
@@ -503,6 +505,7 @@ export const sections = [
     expandable: true,
     repeatMax: 3,
     repeatLabel: 'Référence',
+    repeatArticle: 'une',
     repeatFields: [
       { key: 'lien', label: 'Lien', type: 'text', placeholder: 'https://...' },
       { key: 'pourquoi', label: 'Pourquoi tu le trouves réussi', type: 'textarea', placeholder: 'Ex. la typographie et le contraste des couleurs.' },
@@ -510,7 +513,7 @@ export const sections = [
   },
 
   // ---------------------------------------------------------------------
-  // CHAPITRE 10 — Tes liens
+  // CHAPITRE 10 - Tes liens
   // ---------------------------------------------------------------------
   {
     id: 'tes_liens',
