@@ -232,23 +232,14 @@ const visuelsSection = {
 
 // Nouveau — inspirations visuelles concrètes : des profils ou posts (LinkedIn
 // ou Insta, peu importe le sujet) dont le client aime le style, le ton ou la
-// mise en forme, + son pendant négatif ("anti-référence") pour éviter un
-// premier essai à côté. L'anti-référence existait avant dans l'ancienne route
-// "aucune" (supprimée) ; elle est en fait utile quel que soit le niveau de
-// maturité du client, donc elle est remontée ici comme question partagée.
+// mise en forme.
 const referencesSection = {
   id: 'contenu_references',
   num: 'r',
   kind: 'repeat',
   title: 'Tes inspirations visuelles',
   subtitle: "Des profils ou des posts (LinkedIn ou Insta, le sujet n'a pas d'importance) dont tu aimes le style, le ton ou la mise en forme.",
-  fields: [
-    {
-      key: 'anti_reference',
-      label: "À l'inverse, un type de post ou de visuel que tu détestes voir chez d'autres créateurs, et que tu ne veux jamais qu'on te propose.",
-      type: 'textarea',
-    },
-  ],
+  fields: [],
   repeatCount: 2,
   expandable: true,
   repeatMax: 4,
@@ -261,6 +252,25 @@ const referencesSection = {
       label: 'Ce que tu aimes dans cet exemple',
       type: 'textarea',
       placeholder: 'Ex. la mise en page du carrousel, le ton direct, les couleurs...',
+    },
+  ],
+}
+
+// Le pendant négatif des inspirations, en section à part entière (pas un
+// simple champ dans "Tes inspirations visuelles") pour qu'elle ait le même
+// poids visuel. Existait avant dans l'ancienne route "aucune" (supprimée) ;
+// utile quel que soit le niveau de maturité du client, donc partagée ici.
+const antiReferenceSection = {
+  id: 'contenu_anti_references',
+  num: 'ar',
+  kind: 'single',
+  title: 'Tes anti-références',
+  subtitle: "À l'inverse de tes inspirations : ce que tu ne veux surtout pas qu'on te propose.",
+  fields: [
+    {
+      key: 'anti_reference',
+      label: "Un type de post ou de visuel que tu détestes voir chez d'autres créateurs, et que tu ne veux jamais qu'on te propose.",
+      type: 'textarea',
     },
   ],
 }
@@ -351,8 +361,13 @@ export const routeSection = {
 // section plus tard.
 export function buildContenuSections(route) {
   if (!route) return [routeSection]
-  const middle = [...contenuSectionsFor(route), preuvesSection, visuelsSection, referencesSection, ideesSection].map(
-    (s, i) => ({ ...s, num: String(i + 1) })
-  )
+  const middle = [
+    ...contenuSectionsFor(route),
+    preuvesSection,
+    visuelsSection,
+    referencesSection,
+    antiReferenceSection,
+    ideesSection,
+  ].map((s, i) => ({ ...s, num: String(i + 1) }))
   return [routeSection, ...middle, contenuFinalSection]
 }
