@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabase.js'
 import { sections as volet1Sections, WORKBOOK_TITLE as volet1Title } from './data.js'
 import { CONTENU_TITLE, buildContenuSections } from './dataContenu.js'
-import { RecapContent } from './recap.jsx'
+import { RecapContent, buildRecapSections } from './recap.jsx'
 
 const LEGACY_DRAFT_KEY = 'kalanis-workbook-refonte-1500-draft-v1'
 
@@ -12,22 +12,40 @@ function statusLabel(status) {
   return 'Non commencé'
 }
 
-function VoletCard({ title, description, status, onOpen, onReview }) {
+// Progression approximative : proportion des sections "remplissables" (hors
+// intro/final) qui ont au moins une réponse, au sens de buildRecapSections
+// (même logique que le récap/export, donc toujours cohérente avec ce que le
+// client voit dans "Revoir mes réponses").
+function computeProgress(answers, sectionsList) {
+  const total = sectionsList.filter((s) => s.kind !== 'intro' && s.kind !== 'final').length
+  if (total === 0 || !answers) return 0
+  const filled = buildRecapSections(answers, sectionsList).length
+  return Math.min(100, Math.round((filled / total) * 100))
+}
+
+function VoletCard({ title, description, status, progress, onOpen, onReview }) {
+  const dot = status === 'completed' ? '●' : status === 'draft' ? '◐' : '○'
   return (
-    <div className="repeat-card">
-      <div className="repeat-card-title">{title}</div>
-      <p className="subtitle">{description}</p>
-      <div className={'admin-nav-dot'} style={{ display: 'inline-block', marginRight: 8 }}>
-        {status === 'completed' ? '●' : status === 'draft' ? '◐' : '○'}
+    <div className="volet-card">
+      <div className="volet-card-top">
+        <div className="volet-card-text">
+          <div className="volet-card-title">{title}</div>
+          <p className="volet-card-desc">{description}</p>
+        </div>
+        <div className="volet-card-status">
+          <span className="admin-nav-dot">{dot}</span>
+          {statusLabel(status)}
+        </div>
       </div>
-      <strong>{statusLabel(status)}</strong>
-      <div className="download-actions" style={{ marginTop: 16 }}>
+      <div className="volet-card-progress-track">
+        <div className="volet-card-progress-fill" style={{ width: `${progress}%` }} />
+      </div>
+      <div className="volet-card-footer">
+        <span className="volet-card-progress-text">{progress}% complété</span>
         {status === 'completed' ? (
-          <>
-            <button className="btn-secondary" onClick={onReview}>
-              Revoir mes réponses
-            </button>
-          </>
+          <button className="btn-secondary" onClick={onReview}>
+            Revoir mes réponses
+          </button>
         ) : (
           <button className="btn-primary" onClick={onOpen}>
             {status === 'draft' ? 'Continuer' : 'Commencer'}
@@ -78,6 +96,11 @@ export default function Espace({ identity, onOpenVolet1, onOpenVolet2, onLogout 
   }
   const status2 = row2 ? row2.status : 'none'
 
+  const route2 = row2?.answers?.route?.route
+  const volet2Sections = buildContenuSections(route2)
+  const progress1 = status1 === 'completed' ? 100 : row1 ? computeProgress(row1.answers, volet1Sections) : 0
+  const progress2 = status2 === 'completed' ? 100 : row2 ? computeProgress(row2.answers, volet2Sections) : 0
+
   if (reviewing === 'v1' && row1) {
     return (
       <div className="app-shell">
@@ -94,7 +117,6 @@ export default function Espace({ identity, onOpenVolet1, onOpenVolet2, onLogout 
   }
 
   if (reviewing === 'v2' && row2) {
-    const route2 = row2.answers?.route?.route
     return (
       <div className="app-shell">
         <main className="main-panel">
@@ -105,7 +127,7 @@ export default function Espace({ identity, onOpenVolet1, onOpenVolet2, onLogout 
             <RecapContent
               answers={row2.answers}
               clientName={row2.client_name}
-              sections={buildContenuSections(route2)}
+              sections={volet2Sections}
               title={CONTENU_TITLE}
             />
           </div>
@@ -123,16 +145,18 @@ export default function Espace({ identity, onOpenVolet1, onOpenVolet2, onLogout 
         </button>
       </div>
 
+      <h1>Le Fond de l'Évidence</h1>
       <p className="subtitle">
         Bienvenue {identity.clientName}. Voici tes deux espaces de réponses — tu peux y revenir à
         tout moment.
       </p>
 
-      <div className="admin-list" style={{ display: 'grid', gap: 20 }}>
+      <div className="admin-list" style={{ display: 'grid', gap: 14 }}>
         <VoletCard
           title="Volet 1 — Cadrage & Refonte de profil"
           description="Le workbook de préparation de ta refonte de profil."
           status={status1}
+          progress={progress1}
           onOpen={onOpenVolet1}
           onReview={() => setReviewing('v1')}
         />
@@ -140,6 +164,7 @@ export default function Espace({ identity, onOpenVolet1, onOpenVolet2, onLogout 
           title="Volet 2 — Création de contenu"
           description="La matière pour construire tes templates de contenu."
           status={status2}
+          progress={progress2}
           onOpen={onOpenVolet2}
           onReview={() => setReviewing('v2')}
         />
