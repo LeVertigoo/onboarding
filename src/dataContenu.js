@@ -96,15 +96,37 @@ const sectionsFloue = [
         label: 'Quels thèmes ou sujets abordes-tu le plus souvent, même sans les avoir vraiment formalisés ?',
         type: 'textarea',
       },
-      { key: 'rythme', label: 'À quelle fréquence publies-tu aujourd\'hui ?', type: 'text' },
+      {
+        key: 'rythme',
+        label: 'À quelle fréquence publies-tu aujourd\'hui ?',
+        type: 'choice',
+        options: [
+          { value: '1_ou_moins', label: '1 fois par semaine ou moins' },
+          { value: '2-3', label: '2 à 3 fois par semaine' },
+          { value: '4-5', label: '4 à 5 fois par semaine' },
+          { value: 'plus_5', label: 'Plus de 5 fois par semaine' },
+        ],
+      },
       {
         key: 'formats_actuels',
         label: 'Quels formats utilises-tu déjà le plus souvent ?',
         type: 'multichoice',
         options: FORMAT_OPTIONS,
       },
-      { key: 'cible', label: "À qui s'adressent tes posts selon toi (même approximatif) ?", type: 'textarea' },
-      { key: 'ce_qui_marche', label: 'As-tu une idée de ce qui marche / ne marche pas chez toi jusqu\'ici ?', type: 'textarea' },
+      // La cible est déjà connue via le Fond de l'Évidence (volet 1) — pas la
+      // peine de la redemander ici.
+      {
+        key: 'top_posts',
+        label: 'Quels sont tes 5 meilleurs posts à ce jour ? Partage les liens.',
+        type: 'textarea',
+        placeholder: 'Colle les liens (LinkedIn, Insta...), un par ligne si possible',
+      },
+      {
+        key: 'flop_posts',
+        label: 'Et à l\'inverse, 2 à 3 posts qui ont complètement flop ? Partage les liens.',
+        type: 'textarea',
+        placeholder: 'Colle les liens, un par ligne si possible',
+      },
       {
         key: 'document_existant',
         label: "As-tu un document, une note, ou même un résumé fait par une IA qui reprend un peu tout ça, même si ce n'est pas clair ou pas complet ? Si oui, colle le lien ou le texte ici.",
@@ -163,7 +185,10 @@ const preuvesSection = {
 // soit le parcours) : les envies/besoins visuels. Le lien d'inspiration
 // visuelle qui vivait ici auparavant a été déplacé dans `preuvesSection`
 // ci-dessus (rattaché au cas concret plutôt qu'isolé), donc cette section
-// n'est plus un bloc répétable.
+// n'est plus un bloc répétable. "Quels formats veux-tu utiliser
+// régulièrement" a été retiré : c'est redondant avec `formats_actuels`
+// (route floue) — la question ici porte plutôt sur l'envie/l'inexploré.
+// "Contexte photo" a été retiré (jugé inutile).
 const visuelsSection = {
   id: 'contenu_visuels',
   num: 'v',
@@ -172,10 +197,10 @@ const visuelsSection = {
   subtitle: 'Ce qui t\'aide à visualiser le rendu final de tes templates.',
   fields: [
     {
-      key: 'formats_souhaites',
-      label: 'Quels formats veux-tu utiliser régulièrement ?',
+      key: 'formats_envie',
+      label: "Y a-t-il des formats que tu rêves de faire mais que tu n'as pas encore faits ?",
       type: 'multichoice',
-      options: FORMAT_OPTIONS,
+      options: [...FORMAT_OPTIONS, { value: 'non', label: 'Non, aucun format en particulier qui me manque' }],
     },
     {
       key: 'type_carrousel',
@@ -188,7 +213,7 @@ const visuelsSection = {
         { value: 'storytelling', label: 'Storytelling slide par slide' },
         { value: 'ne_sais_pas', label: 'Je ne sais pas encore' },
       ],
-      showIf: { field: 'formats_souhaites', includes: 'carrousel' },
+      showIf: { field: 'formats_envie', includes: 'carrousel' },
     },
     {
       key: 'type_infographie',
@@ -200,25 +225,69 @@ const visuelsSection = {
         { value: 'comparatif', label: 'Comparatif' },
         { value: 'definition', label: 'Définition / vulgarisation d\'un terme' },
       ],
-      showIf: { field: 'formats_souhaites', includes: 'infographie' },
+      showIf: { field: 'formats_envie', includes: 'infographie' },
     },
+  ],
+}
+
+// Nouveau — inspirations visuelles concrètes : des profils ou posts (LinkedIn
+// ou Insta, peu importe le sujet) dont le client aime le style, le ton ou la
+// mise en forme. Bloc répétable dans le même esprit que les profils-cibles
+// du volet 1.
+const referencesSection = {
+  id: 'contenu_references',
+  num: 'r',
+  kind: 'repeat',
+  title: 'Tes inspirations visuelles',
+  subtitle: "Des profils ou des posts (LinkedIn ou Insta, le sujet n'a pas d'importance) dont tu aimes le style, le ton ou la mise en forme.",
+  fields: [],
+  repeatCount: 2,
+  expandable: true,
+  repeatMax: 4,
+  repeatLabel: 'Référence',
+  repeatArticle: 'une',
+  repeatFields: [
+    { key: 'lien', label: 'Lien (profil ou post)', type: 'text', placeholder: 'https://...' },
     {
-      key: 'contexte_photo',
-      label: 'Dans quel(s) contexte(s) veux-tu qu\'on te voie le plus souvent en photo ?',
-      type: 'multichoice',
+      key: 'pourquoi',
+      label: 'Ce que tu aimes dans cet exemple',
+      type: 'textarea',
+      placeholder: 'Ex. la mise en page du carrousel, le ton direct, les couleurs...',
+    },
+  ],
+}
+
+// Nouveau — un espace pour balancer ses idées de carrousel/infographie même
+// en vrac, non structurées : le but n'est pas d'avoir quelque chose de propre
+// ici, juste la matière brute à mettre en forme derrière.
+const ideesSection = {
+  id: 'contenu_idees',
+  num: 'i',
+  kind: 'repeat',
+  title: 'Tes idées de carrousel ou infographie',
+  subtitle: "Même brouillon, même pas structuré : balance tes idées telles qu'elles te viennent, on s'occupe de les mettre en forme.",
+  fields: [],
+  repeatCount: 1,
+  expandable: true,
+  repeatMax: 5,
+  repeatLabel: 'Idée',
+  repeatArticle: 'une',
+  repeatFields: [
+    {
+      key: 'format_vise',
+      label: 'Plutôt pour un carrousel ou une infographie ?',
+      type: 'choice',
       options: [
-        { value: 'call', label: 'En call / visio' },
-        { value: 'scene', label: 'Sur scène / événement' },
-        { value: 'bureau', label: 'À ton bureau / setup' },
-        { value: 'lifestyle', label: 'Lifestyle / décontracté' },
-        { value: 'autre', label: 'Autre' },
+        { value: 'carrousel', label: 'Carrousel' },
+        { value: 'infographie', label: 'Infographie' },
+        { value: 'ne_sais_pas', label: 'Je ne sais pas encore' },
       ],
     },
     {
-      key: 'contexte_photo_autre',
-      label: 'Précise le contexte "Autre"',
-      type: 'text',
-      showIf: { field: 'contexte_photo', includes: 'autre' },
+      key: 'description',
+      label: "Décris l'idée telle qu'elle te vient, même en vrac",
+      type: 'textarea',
+      placeholder: "Ex. un truc sur les 3 erreurs que je vois tout le temps chez mes clients avant qu'on travaille ensemble...",
     },
   ],
 }
@@ -252,14 +321,16 @@ export const routeSection = {
 }
 
 // Liste complète des sections d'un parcours donné (branchement + sections de
-// la route + "Une preuve à mettre en visuel" et "Visuels, besoins et envies"
-// communes aux 2 routes + section finale), utilisée pour le récap
+// la route + les sections communes aux 2 routes — preuve, visuels,
+// inspirations, idées en vrac — + section finale), utilisée pour le récap
 // (titres/labels corrects) comme pour le moteur de saisie. La numérotation
 // (num) des sections du milieu est recalculée ici plutôt que figée sur
 // chaque section, pour rester correcte même si une route gagne ou perd une
 // section plus tard.
 export function buildContenuSections(route) {
   if (!route) return [routeSection]
-  const middle = [...contenuSectionsFor(route), preuvesSection, visuelsSection].map((s, i) => ({ ...s, num: String(i + 1) }))
+  const middle = [...contenuSectionsFor(route), preuvesSection, visuelsSection, referencesSection, ideesSection].map(
+    (s, i) => ({ ...s, num: String(i + 1) })
+  )
   return [routeSection, ...middle, contenuFinalSection]
 }
