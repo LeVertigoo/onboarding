@@ -1,13 +1,13 @@
 import { sections as defaultSections, WORKBOOK_TITLE as defaultTitle } from './data.js'
 
-// Shared recap logic — used by the client-side "download my answers" view
+// Shared recap logic, used by the client-side "download my answers" view
 // (App.jsx / Contenu.jsx, fed by each workbook's local `payload` state) and
 // the admin viewer, since both work off the same structured-by-section shape:
 // { sectionId: { field: value } } for single sections, or
 // { sectionId: { fields: { field: value }, items: [{ field: value }, ...] } }
 // for repeat sections (`fields` holds any preamble fields shown once above
-// the repeated cards, e.g. "combien de clients" before the client list —
-// empty object when the section has none).
+// the repeated cards, par exemple "combien de clients" avant la liste des
+// clients : objet vide quand la section n'en a pas).
 //
 // Every function here defaults to the volet 1 ("Refonte 1500€") sections/title
 // when no `sections`/`title` override is passed, so every existing call site
@@ -25,7 +25,7 @@ function hasValue(v) {
 
 // Pour un champ 'choice'/'multichoice', les réponses stockées sont les
 // `value` internes des options (ex. 'etablie'), pas leur libellé affiché
-// (ex. "J'ai déjà une stratégie bien établie") — contrairement aux champs du
+// (ex. "J'ai déjà une stratégie bien établie"), contrairement aux champs du
 // volet 1 historique, où value === label par convention pour éviter ce
 // problème. On résout ici l'un ou l'autre cas sans distinction : si le champ
 // a des `options`, on retrouve le libellé ; sinon (text/textarea/scale) on
@@ -40,10 +40,11 @@ function displayValue(v, field) {
 
 export function sectionTitleFor(sectionId, sectionsList = defaultSections) {
   const s = sectionsList.find((sec) => sec.id === sectionId)
-  // Plain "Section N — Titre" — some section titles already contain their
-  // own parentheses (ex. "Toi (la personne)"), so wrapping the whole title
-  // in a second pair used to produce an ugly "Section 1 (Toi (la personne))".
-  return s ? `Section ${s.num} — ${s.title}` : sectionId
+  // Plain "Section N : Titre". Certains titres de section contiennent déjà
+  // leurs propres parenthèses (ex. "Toi (la personne)"), donc entourer tout
+  // le titre d'une seconde paire produisait un vilain "Section 1 (Toi (la
+  // personne))".
+  return s ? `Section ${s.num} : ${s.title}` : sectionId
 }
 
 function fieldDefFor(sectionId, key, sectionsList) {
