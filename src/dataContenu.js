@@ -2,17 +2,23 @@
 // les templates). Même moteur de champs que data.js (text / textarea / scale
 // / choice / multichoice — ce dernier pour les QCM à sélection multiple).
 //
-// Route "aucune" reprend le document de travail fourni par Thomas (3 QCM
-// multi-sélection, plusieurs QCM simples, du texte libre, et 3 champs
-// "upload de fichier" encore en attente d'une décision technique — voir les
-// commentaires FILE_UPLOAD_TODO ci-dessous : en attendant, ce sont des
-// textarea "colle un lien" pour rester fonctionnels tout de suite.
+// Principe directeur (quelle que soit la route) : ce formulaire ne sert qu'à
+// mettre au propre la stratégie de contenu du client pour que Thomas puisse
+// en déduire les besoins visuels (carrousels à faire, infographies si besoin,
+// etc.) — ce n'est pas un audit ou un process de consulting. On ne creuse
+// donc jamais plus que nécessaire pour ça.
+//
+// Seulement 2 routes : "etablie" (stratégie déjà posée, on récupère
+// l'existant) et "floue" (une approche mais rien de formalisé, on capture ce
+// qui se fait déjà). La route "aucune" (publication sans structure, avec un
+// niveau de questions proche d'un audit de consulting) a été retirée : elle
+// allait trop loin pour l'usage réel de ce formulaire.
 
 export const CONTENU_TITLE = 'Le Fond de l\'Évidence — Volet Contenu'
 
 // Options de formats partagées entre la route "floue" (ce qu'ils font déjà
 // aujourd'hui) et la section "Visuels, besoins et envies" (ce qu'ils veulent
-// utiliser, commune aux 3 routes) — pour rester cohérent entre les deux.
+// utiliser, commune aux 2 routes) — pour rester cohérent entre les deux.
 const FORMAT_OPTIONS = [
   { value: 'carrousel', label: 'Carrousel multi-slides' },
   { value: 'avant_apres', label: 'Visuel avant / après' },
@@ -40,13 +46,7 @@ export const routeQuestion = {
       value: 'floue',
       label: "J'ai une approche, mais rien de formalisé",
       description:
-        "Tu publies avec une certaine logique en tête (des thèmes récurrents, une fréquence), mais ça n'a jamais été écrit ou structuré nulle part.",
-    },
-    {
-      value: 'aucune',
-      label: 'Je publie sans vraiment suivre de structure',
-      description:
-        "Tu postes quand l'inspiration vient, sans piliers de contenu définis, sans vraiment savoir ce qui marche ou pas chez toi.",
+        "Tu publies avec une certaine logique en tête (des thèmes récurrents, une fréquence), mais ça n'a jamais été écrit ou structuré nulle part — ou tu as un document, une note, un résumé, mais pas complètement clair ou abouti.",
     },
   ],
 }
@@ -105,155 +105,12 @@ const sectionsFloue = [
       },
       { key: 'cible', label: "À qui s'adressent tes posts selon toi (même approximatif) ?", type: 'textarea' },
       { key: 'ce_qui_marche', label: 'As-tu une idée de ce qui marche / ne marche pas chez toi jusqu\'ici ?', type: 'textarea' },
-    ],
-  },
-]
-
-// Route C — aucune structure suivie : la plus fournie, basée sur le
-// document de travail de Thomas. 3 champs "upload de fichier" dans le
-// document d'origine sont en attente d'une décision technique (stockage
-// Supabase à mettre en place) ; en attendant ils sont remplacés par un
-// textarea "colle un lien vers tes photos" pour rester utilisables tout de
-// suite — marqués FILE_UPLOAD_TODO pour les retrouver facilement.
-const sectionsAucune = [
-  {
-    id: 'contenu_piliers',
-    num: '1',
-    kind: 'single',
-    title: 'Piliers de contenu',
-    fields: [
       {
-        key: 'types_naturels',
-        label: 'Parmi ces types de posts, lesquels te semblent les plus naturels pour toi ?',
-        type: 'multichoice',
-        options: [
-          { value: 'storytelling', label: 'Storytelling perso' },
-          { value: 'prise_position', label: 'Prise de position / avis contrariant' },
-          { value: 'preuve_client', label: 'Preuve client / étude de cas' },
-          { value: 'insight', label: 'Insight / partage de méthode' },
-          { value: 'post_vente', label: 'Post vente (annonce ton offre ouvertement)' },
-        ],
-      },
-      {
-        key: 'jamais_ose',
-        label: "Y a-t-il un type de post que tu rêves de faire mais que tu n'as jamais osé ?",
+        key: 'document_existant',
+        label: "As-tu un document, une note, ou même un résumé fait par une IA qui reprend un peu tout ça, même si ce n'est pas clair ou pas complet ? Si oui, colle le lien ou le texte ici.",
         type: 'textarea',
-      },
-      {
-        key: 'repartition_cibles',
-        label: 'Comment tu verrais la répartition de tes posts entre tes cibles ?',
-        type: 'choice',
-        // Simplifié par rapport au document d'origine : plutôt que de détecter
-        // automatiquement une "double cible" depuis le volet 1 (pas de donnée
-        // structurée pour ça côté Fond de l'Évidence v1), l'option "une seule
-        // cible" rend la question auto-suffisante pour tout le monde.
-        options: [
-          { value: 'une_seule_cible', label: 'Une seule cible, pas de répartition à faire' },
-          { value: 'majorite_entreprise', label: 'Majorité entreprise' },
-          { value: 'equilibre', label: 'Équilibré' },
-          { value: 'majorite_freelance', label: 'Majorité freelance / accompagnement' },
-          { value: 'ne_sais_pas', label: 'Je ne sais pas encore' },
-        ],
-      },
-      {
-        key: 'themes_en_boucle',
-        label: 'Donne 3 à 5 thèmes ou sujets que tu pourrais traiter en boucle sans t\'épuiser (pas besoin de titres de posts, juste les thèmes).',
-        type: 'textarea',
-      },
-    ],
-  },
-  {
-    id: 'contenu_preuve',
-    num: '3',
-    kind: 'single',
-    title: 'Preuve à mettre en carrousel',
-    fields: [
-      {
-        key: 'resultats_non_utilises',
-        label: "Y a-t-il des résultats ou chiffres que tu n'as PAS mis dans ton Fond de l'Évidence, mais que tu aimerais exploiter en carrousel (ex: étude de cas détaillée, avant/après) ?",
-        type: 'textarea',
-      },
-      // FILE_UPLOAD_TODO — idem.
-      {
-        key: 'visuels_resultats',
-        label: 'Si tu as des visuels de résultats (dashboard Ads anonymisé, graphe, capture), partage un lien vers eux (optionnel).',
-        type: 'textarea',
-      },
-    ],
-  },
-  {
-    id: 'contenu_rythme',
-    num: '4',
-    kind: 'single',
-    title: 'Rythme de production réel',
-    fields: [
-      {
-        key: 'rythme_tenable',
-        label: 'Combien de posts par semaine te sens-tu capable de tenir dans la durée (pas dans l\'idéal, dans la réalité) ?',
-        type: 'choice',
-        options: [
-          { value: '1', label: '1' },
-          { value: '2-3', label: '2-3' },
-          { value: '4-5', label: '4-5' },
-          { value: 'plus_5', label: 'Plus de 5' },
-        ],
-      },
-      {
-        key: 'qui_publie',
-        label: 'Qui écrit / publie au quotidien ?',
-        type: 'choice',
-        options: [
-          { value: 'moi_seule', label: 'Moi seule' },
-          { value: 'moi_relecture', label: 'Moi avec relecture Kalanis' },
-          { value: 'ghostwriter', label: 'Kalanis ghostwriter complet' },
-        ],
-      },
-      {
-        key: 'outil_planification',
-        label: 'As-tu déjà un outil de planification de contenu (Notion, Excel, autre) ? Si oui, lequel, et partage le lien si possible.',
-        type: 'textarea',
-        placeholder: 'Optionnel',
-      },
-    ],
-  },
-  {
-    id: 'contenu_infographies',
-    num: '5',
-    kind: 'single',
-    title: 'Infographies / vulgarisation',
-    fields: [
-      {
-        key: 'concepts_a_vulgariser',
-        label: 'Quels concepts techniques de ton métier aimerais-tu vulgariser en infographie pour ta cible (ex: un process, un mécanisme, un terme que tout le monde utilise mal) ?',
-        type: 'textarea',
-      },
-      {
-        key: 'niveau_detail',
-        label: 'Niveau de détail souhaité pour ces infographies ?',
-        type: 'choice',
-        options: [
-          { value: 'grand_public', label: 'Grand public, très simplifié' },
-          { value: 'intermediaire', label: 'Niveau intermédiaire' },
-          { value: 'technique', label: 'Technique assumé, ma cible s\'y connaît déjà' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'contenu_references',
-    num: '6',
-    kind: 'single',
-    title: 'Références et anti-références',
-    fields: [
-      {
-        key: 'comptes_inspirants',
-        label: 'Donne 1 à 3 comptes LinkedIn dont tu aimes le contenu (pas le style visuel, plutôt la structure des posts/carrousels) — avec un lien si possible.',
-        type: 'textarea',
-      },
-      {
-        key: 'anti_reference',
-        label: 'Un type de post que tu détestes voir chez les autres, et que tu ne veux jamais qu\'on te propose.',
-        type: 'textarea',
+        rows: 6,
+        placeholder: 'Optionnel — https://... ou colle le texte complet ici',
       },
     ],
   },
@@ -262,18 +119,55 @@ const sectionsAucune = [
 export function contenuSectionsFor(route) {
   if (route === 'etablie') return sectionsEtablie
   if (route === 'floue') return sectionsFloue
-  if (route === 'aucune') return sectionsAucune
   return []
 }
 
-// Section commune aux 3 routes (ajoutée juste avant "Dernier mot", quel que
-// soit le parcours) : les envies/besoins visuels, + un bloc "Références
-// visuelles" repeat/expandable identique dans l'esprit à celui du volet 1
-// (lien + pourquoi, 2 à 3 cartes).
+// Section commune aux 2 routes — à ne pas confondre avec un étalage de
+// preuves façon volet 1 : ici le seul but est de comprendre le FORMAT d'un
+// cas concret pour voir s'il est templatisable en carrousel (ou autre
+// visuel). On démarre donc avec un seul cas détaillé ; on n'en ajoute un
+// second que si son format est vraiment différent du premier — pas pour
+// lister davantage de preuves. Le lien vers un visuel existant de ce
+// résultat (anciennement une question à part dans "Visuels, besoins et
+// envies") est directement rattaché à chaque cas.
+const preuvesSection = {
+  id: 'contenu_preuves',
+  num: 'p',
+  kind: 'repeat',
+  title: 'Une preuve à mettre en visuel',
+  subtitle:
+    "Pas besoin de tout lister : juste un cas détaillé, pour qu'on comprenne comment le mettre en forme (carrousel, infographie, avant/après...). N'en ajoute un second que si son format est vraiment différent du premier.",
+  fields: [],
+  repeatCount: 1,
+  expandable: true,
+  repeatMax: 3,
+  repeatLabel: 'Cas',
+  repeatFields: [
+    { key: 'resultat', label: 'Résultat concret obtenu, chiffré si possible', type: 'text', placeholder: 'Ex. 12 850€ en 1 mois' },
+    {
+      key: 'avant_apres',
+      label: 'En quelques mots, la situation avant, puis après',
+      type: 'textarea',
+      placeholder: 'Ex. profil générique et invisible avant, univers visuel sur-mesure et +12 850€ en 1 mois après.',
+    },
+    {
+      key: 'lien',
+      label: "Lien vers un visuel existant de ce résultat si tu en as (dashboard anonymisé, graphe, capture, post...)",
+      type: 'text',
+      placeholder: 'https://... (optionnel)',
+    },
+  ],
+}
+
+// Section commune aux 2 routes (ajoutée juste avant "Dernier mot", quel que
+// soit le parcours) : les envies/besoins visuels. Le lien d'inspiration
+// visuelle qui vivait ici auparavant a été déplacé dans `preuvesSection`
+// ci-dessus (rattaché au cas concret plutôt qu'isolé), donc cette section
+// n'est plus un bloc répétable.
 const visuelsSection = {
   id: 'contenu_visuels',
   num: 'v',
-  kind: 'repeat',
+  kind: 'single',
   title: 'Visuels, besoins et envies',
   subtitle: 'Ce qui t\'aide à visualiser le rendu final de tes templates.',
   fields: [
@@ -327,22 +221,9 @@ const visuelsSection = {
       showIf: { field: 'contexte_photo', includes: 'autre' },
     },
   ],
-  repeatCount: 2,
-  expandable: true,
-  repeatMax: 3,
-  repeatLabel: 'Référence',
-  repeatFields: [
-    { key: 'lien', label: 'Lien (Drive, Dropbox, post LinkedIn...)', type: 'text', placeholder: 'https://...' },
-    {
-      key: 'pourquoi',
-      label: 'Pourquoi tu l\'aimes / ce que tu veux qu\'on en retienne',
-      type: 'textarea',
-      placeholder: 'Ex. une photo que j\'aime déjà, une mise en page de carrousel qui me plaît, un visuel de résultat...',
-    },
-  ],
 }
 
-// Section finale générique (identique dans les 3 routes), ajoutée après les
+// Section finale générique (identique dans les 2 routes), ajoutée après les
 // sections spécifiques à la route.
 export const contenuFinalSection = {
   id: 'final',
@@ -371,13 +252,14 @@ export const routeSection = {
 }
 
 // Liste complète des sections d'un parcours donné (branchement + sections de
-// la route + "Visuels, besoins et envies" commune aux 3 routes + section
-// finale), utilisée pour le récap (titres/labels corrects) comme pour le
-// moteur de saisie. La numérotation (num) des sections du milieu est
-// recalculée ici plutôt que figée sur chaque section, pour rester correcte
-// même si une route gagne ou perd une section plus tard.
+// la route + "Une preuve à mettre en visuel" et "Visuels, besoins et envies"
+// communes aux 2 routes + section finale), utilisée pour le récap
+// (titres/labels corrects) comme pour le moteur de saisie. La numérotation
+// (num) des sections du milieu est recalculée ici plutôt que figée sur
+// chaque section, pour rester correcte même si une route gagne ou perd une
+// section plus tard.
 export function buildContenuSections(route) {
   if (!route) return [routeSection]
-  const middle = [...contenuSectionsFor(route), visuelsSection].map((s, i) => ({ ...s, num: String(i + 1) }))
+  const middle = [...contenuSectionsFor(route), preuvesSection, visuelsSection].map((s, i) => ({ ...s, num: String(i + 1) }))
   return [routeSection, ...middle, contenuFinalSection]
 }
