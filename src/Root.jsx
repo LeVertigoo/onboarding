@@ -89,7 +89,7 @@ export default function Root() {
 // un éventuel brouillon déjà enregistré en base avant d'ouvrir App.jsx,
 // pour permettre la reprise même depuis un autre appareil. Si le volet est
 // déjà 'completed', Espace.jsx propose "Revoir mes réponses" (lecture
-// seule) à la place de "Continuer" — ce composant ne gère donc en pratique
+// seule) à la place de "Continuer", ce composant ne gère donc en pratique
 // que les cas 'draft' et 'aucun brouillon'.
 function Volet1Loader({ identity, onBack }) {
   const [state, setState] = useState({ loading: true, answers: null, status: null })
