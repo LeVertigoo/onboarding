@@ -232,15 +232,23 @@ const visuelsSection = {
 
 // Nouveau — inspirations visuelles concrètes : des profils ou posts (LinkedIn
 // ou Insta, peu importe le sujet) dont le client aime le style, le ton ou la
-// mise en forme. Bloc répétable dans le même esprit que les profils-cibles
-// du volet 1.
+// mise en forme, + son pendant négatif ("anti-référence") pour éviter un
+// premier essai à côté. L'anti-référence existait avant dans l'ancienne route
+// "aucune" (supprimée) ; elle est en fait utile quel que soit le niveau de
+// maturité du client, donc elle est remontée ici comme question partagée.
 const referencesSection = {
   id: 'contenu_references',
   num: 'r',
   kind: 'repeat',
   title: 'Tes inspirations visuelles',
   subtitle: "Des profils ou des posts (LinkedIn ou Insta, le sujet n'a pas d'importance) dont tu aimes le style, le ton ou la mise en forme.",
-  fields: [],
+  fields: [
+    {
+      key: 'anti_reference',
+      label: "À l'inverse, un type de post ou de visuel que tu détestes voir chez d'autres créateurs, et que tu ne veux jamais qu'on te propose.",
+      type: 'textarea',
+    },
+  ],
   repeatCount: 2,
   expandable: true,
   repeatMax: 4,
@@ -257,29 +265,43 @@ const referencesSection = {
   ],
 }
 
-// Nouveau — un espace pour balancer ses idées de carrousel/infographie même
-// en vrac, non structurées : le but n'est pas d'avoir quelque chose de propre
-// ici, juste la matière brute à mettre en forme derrière.
+// Section la plus importante du volet pour Thomas : il ne fabrique pas des
+// visuels à l'unité mais des TEMPLATES réutilisables (banque de slides à
+// customiser, templates de post statique, templates d'infographie) — donc
+// plus il a d'idées variées ici, plus il peut couvrir de cas. Ce n'est donc
+// plus une section "optionnelle" façon brainstorm : on démarre avec 3 idées
+// demandées (pas 1), jusqu'à 8, et le champ "banque d'idées" permet de
+// récupérer d'un coup tout ce que le client a déjà listé ailleurs.
 const ideesSection = {
   id: 'contenu_idees',
   num: 'i',
   kind: 'repeat',
-  title: 'Tes idées de carrousel ou infographie',
-  subtitle: "Même brouillon, même pas structuré : balance tes idées telles qu'elles te viennent, on s'occupe de les mettre en forme.",
-  fields: [],
-  repeatCount: 1,
+  title: 'Tes idées de posts à templatiser',
+  subtitle:
+    "C'est la section la plus importante : plus tu donnes d'idées variées (même en vrac, même pas rédigées), plus on pourra te construire de templates réutilisables — carrousel, infographie, ou post statique — que tu n'auras plus qu'à remplir toi-même derrière. Donne-en plusieurs, pas juste une.",
+  fields: [
+    {
+      key: 'banque_idees',
+      label: "As-tu déjà une banque d'idées de posts (Notion, Trello, Excel, notes...) ? Partage un lien, ou exporte-la et colle-la ici.",
+      type: 'textarea',
+      rows: 6,
+      placeholder: 'Optionnel si tu n\'as rien de fait, mais précieux si tu as déjà quelque chose',
+    },
+  ],
+  repeatCount: 3,
   expandable: true,
-  repeatMax: 5,
+  repeatMax: 8,
   repeatLabel: 'Idée',
   repeatArticle: 'une',
   repeatFields: [
     {
       key: 'format_vise',
-      label: 'Plutôt pour un carrousel ou une infographie ?',
+      label: 'Plutôt pour quel format ?',
       type: 'choice',
       options: [
         { value: 'carrousel', label: 'Carrousel' },
         { value: 'infographie', label: 'Infographie' },
+        { value: 'post_statique', label: 'Visuel de post simple / statique' },
         { value: 'ne_sais_pas', label: 'Je ne sais pas encore' },
       ],
     },
