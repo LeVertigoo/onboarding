@@ -380,6 +380,81 @@ h1 {
   letter-spacing: 0.04em;
 }
 
+/* ---------------- Espace — cartes volet ---------------- */
+.volet-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.volet-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.volet-card-text {
+  min-width: 0;
+}
+
+.volet-card-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.volet-card-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--body);
+  margin: 0;
+}
+
+.volet-card-status {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.volet-card-progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.volet-card-progress-fill {
+  height: 100%;
+  background: var(--blue);
+  transition: width 0.2s ease;
+}
+
+.volet-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.volet-card-progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .paired-recap {
   background: #f4f2e8;
   border: 1px solid var(--border2);
