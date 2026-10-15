@@ -13,13 +13,22 @@ function formatDate(iso) {
   }
 }
 
+// Toute ligne dont le `workbook_type` n'est pas reconnu (valeur absente ou
+// différente de 'contenu', notamment les lignes historiques créées avant
+// l'ajout de cette colonne) est traitée comme 'refonte_1500'. C'est ce que
+// fait déjà `sectionsAndTitleFor` pour choisir les bonnes sections, mais le
+// nom normalisé doit aussi être utilisé partout où ce code lit
+// `row.workbook_type` directement, sinon ces lignes se retrouvent groupées
+// sous une clé différente et n'apparaissent plus dans l'onglet "Volet 1".
+function normWorkbookType(row) {
+  return row.workbook_type === 'contenu' ? 'contenu' : 'refonte_1500'
+}
+
 function sectionsAndTitleFor(row) {
-  if (row.workbook_type === 'contenu') {
+  if (normWorkbookType(row) === 'contenu') {
     const route = row.answers?.route?.route
     return { sections: buildContenuSections(route), title: CONTENU_TITLE }
   }
-  // 'refonte_1500' et toute ancienne ligne sans workbook_type reconnu :
-  // comportement identique à avant cette refonte.
   return { sections: volet1Sections, title: volet1Title }
 }
 
@@ -30,15 +39,15 @@ function downloadMarkdownFor(row) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `workbook-${(row.client_name || 'kalanis').trim().replace(/\s+/g, '-').toLowerCase()}-${row.workbook_type}.md`
+  a.download = `workbook-${(row.client_name || 'kalanis').trim().replace(/\s+/g, '-').toLowerCase()}-${normWorkbookType(row)}.md`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 
-// Inchangé dans son fonctionnement (accordéon, impression PDF, export .md) —
-// seule différence : les sections/titre viennent du volet de `row` au lieu
+// Inchangé dans son fonctionnement (accordéon, impression PDF, export .md).
+// Seule différence : les sections/titre viennent du volet de `row` au lieu
 // d'être toujours ceux du volet 1.
 export function SubmissionDetail({ row }) {
   const { sections, title } = sectionsAndTitleFor(row)
@@ -147,7 +156,7 @@ function voletBadge(row) {
 
 // Regroupe les lignes par client (email en priorité, nom en repli pour les
 // lignes historiques sans email) : chaque client a au plus une ligne par
-// volet (refonte_1500 / contenu), ouvrables séparément — remplace l'ancienne
+// volet (refonte_1500 / contenu), ouvrables séparément. Remplace l'ancienne
 // liste plate "une ligne = une soumission".
 function groupByClient(rows) {
   const groups = new Map()
@@ -157,11 +166,12 @@ function groupByClient(rows) {
       groups.set(key, { key, clientName: row.client_name, clientEmail: row.client_email, volets: {}, lastActivity: '' })
     }
     const g = groups.get(key)
-    const existing = g.volets[row.workbook_type]
+    const voletKey = normWorkbookType(row)
+    const existing = g.volets[voletKey]
     // S'il y a déjà une ligne pour ce volet (ne devrait plus arriver avec le
     // nouveau système d'upsert, sauf vieilles données), on garde la plus récente.
     if (!existing || new Date(row.updated_at || row.created_at) > new Date(existing.updated_at || existing.created_at)) {
-      g.volets[row.workbook_type] = row
+      g.volets[voletKey] = row
     }
     const activity = row.updated_at || row.created_at
     if (!g.lastActivity || new Date(activity) > new Date(g.lastActivity)) g.lastActivity = activity
@@ -183,25 +193,37 @@ export default function Admin() {
   const [openVolet, setOpenVolet] = useState(null) // 'refonte_1500' | 'contenu' | null
 
   useEffect(() => {
+    let active = true
     supabase.auth.getSession().then(({ data }) => {
+      if (!active) return
       setSession(data.session)
       setChecking(false)
     })
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
-    return () => listener.subscription.unsubscribe()
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (active) setSession(s)
+    })
+    return () => {
+      active = false
+      listener.subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
     if (!session) return
+    let active = true
     setLoading(true)
     supabase
       .from('client_workbooks')
       .select('*')
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
+        if (!active) return
         if (!error) setRows(data || [])
         setLoading(false)
       })
+    return () => {
+      active = false
+    }
   }, [session])
 
   const handleLogin = async (e) => {
@@ -289,24 +311,24 @@ export default function Admin() {
               {isOpen && (
                 <div style={{ padding: '12px 16px', display: 'flex', gap: 10 }}>
                   <button
-                    className={'step' + (openVolet === 'refonte_1500' ? ' step-active' : '')}
+                    className={'step' + (openVolet === 'refonte_1500' ? ' step-active' : b1.cls ? ' ' + b1.cls : '')}
                     onClick={() => setOpenVolet(openVolet === 'refonte_1500' ? null : 'refonte_1500')}
                     disabled={!g.volets.refonte_1500}
                   >
-                    <span className="step-label">Volet 1 — Cadrage & Refonte ({b1.label})</span>
+                    <span className="step-label">Volet 1 : Cadrage & Refonte ({b1.label})</span>
                   </button>
                   <button
-                    className={'step' + (openVolet === 'contenu' ? ' step-active' : '')}
+                    className={'step' + (openVolet === 'contenu' ? ' step-active' : b2.cls ? ' ' + b2.cls : '')}
                     onClick={() => setOpenVolet(openVolet === 'contenu' ? null : 'contenu')}
                     disabled={!g.volets.contenu}
                   >
-                    <span className="step-label">Volet 2 — Création de contenu ({b2.label})</span>
+                    <span className="step-label">Volet 2 : Création de contenu ({b2.label})</span>
                   </button>
                 </div>
               )}
 
               {isOpen && openVolet && g.volets[openVolet] && (
-                <SubmissionDetail row={g.volets[openVolet]} />
+                <SubmissionDetail row={g.volets[openVolet]} key={openVolet} />
               )}
             </div>
           )
