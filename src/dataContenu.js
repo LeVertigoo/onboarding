@@ -1,11 +1,11 @@
-// Contenu du volet 2 — "Le Fond de l'Évidence — Volet Contenu" (matière pour
+// Contenu du volet 2, "Le Fond de l'Évidence : Volet Contenu" (matière pour
 // les templates). Même moteur de champs que data.js (text / textarea / scale
-// / choice / multichoice — ce dernier pour les QCM à sélection multiple).
+// / choice / multichoice, ce dernier pour les QCM à sélection multiple).
 //
 // Principe directeur (quelle que soit la route) : ce formulaire ne sert qu'à
 // mettre au propre la stratégie de contenu du client pour que Thomas puisse
 // en déduire les besoins visuels (carrousels à faire, infographies si besoin,
-// etc.) — ce n'est pas un audit ou un process de consulting. On ne creuse
+// etc.). Ce n'est pas un audit ou un process de consulting. On ne creuse
 // donc jamais plus que nécessaire pour ça.
 //
 // Seulement 2 routes : "etablie" (stratégie déjà posée, on récupère
@@ -14,11 +14,11 @@
 // niveau de questions proche d'un audit de consulting) a été retirée : elle
 // allait trop loin pour l'usage réel de ce formulaire.
 
-export const CONTENU_TITLE = 'Le Fond de l\'Évidence — Volet Contenu'
+export const CONTENU_TITLE = 'Le Fond de l\'Évidence : Volet Contenu'
 
 // Options de formats partagées entre la route "floue" (ce qu'ils font déjà
 // aujourd'hui) et la section "Visuels, besoins et envies" (ce qu'ils veulent
-// utiliser, commune aux 2 routes) — pour rester cohérent entre les deux.
+// utiliser, commune aux 2 routes), pour rester cohérent entre les deux.
 const FORMAT_OPTIONS = [
   { value: 'carrousel', label: 'Carrousel multi-slides' },
   { value: 'avant_apres', label: 'Visuel avant / après' },
@@ -46,12 +46,12 @@ export const routeQuestion = {
       value: 'floue',
       label: "J'ai une approche, mais rien de formalisé",
       description:
-        "Tu publies avec une certaine logique en tête (des thèmes récurrents, une fréquence), mais ça n'a jamais été écrit ou structuré nulle part — ou tu as un document, une note, un résumé, mais pas complètement clair ou abouti.",
+        "Tu publies avec une certaine logique en tête (des thèmes récurrents, une fréquence), mais ça n'a jamais été écrit ou structuré nulle part, ou tu as un document, une note, un résumé, mais pas complètement clair ou abouti.",
     },
   ],
 }
 
-// Route A — stratégie déjà établie : le strict minimum, on récupère la
+// Route A (stratégie déjà établie) : le strict minimum, on récupère la
 // matière déjà existante pour la mettre au format des templates. Pas
 // d'upload de fichier ici (volontaire, demandé explicitement) : un lien ou
 // un texte collé dans un grand textarea suffit.
@@ -80,7 +80,7 @@ const sectionsEtablie = [
   },
 ]
 
-// Route B — stratégie existante mais pas formalisée : ne creuse quasiment
+// Route B (stratégie existante mais pas formalisée) : ne creuse quasiment
 // pas, le but est juste de capturer ce qui se fait déjà aujourd'hui pour
 // que Thomas puisse le mettre au propre derrière.
 const sectionsFloue = [
@@ -113,7 +113,7 @@ const sectionsFloue = [
         type: 'multichoice',
         options: FORMAT_OPTIONS,
       },
-      // La cible est déjà connue via le Fond de l'Évidence (volet 1) — pas la
+      // La cible est déjà connue via le Fond de l'Évidence (volet 1), pas la
       // peine de la redemander ici.
       {
         key: 'top_posts',
@@ -132,7 +132,7 @@ const sectionsFloue = [
         label: "As-tu un document, une note, ou même un résumé fait par une IA qui reprend un peu tout ça, même si ce n'est pas clair ou pas complet ? Si oui, colle le lien ou le texte ici.",
         type: 'textarea',
         rows: 6,
-        placeholder: 'Optionnel — https://... ou colle le texte complet ici',
+        placeholder: 'Optionnel : https://... ou colle le texte complet ici',
       },
     ],
   },
@@ -144,11 +144,11 @@ export function contenuSectionsFor(route) {
   return []
 }
 
-// Section commune aux 2 routes — à ne pas confondre avec un étalage de
+// Section commune aux 2 routes, à ne pas confondre avec un étalage de
 // preuves façon volet 1 : ici le seul but est de comprendre le FORMAT d'un
 // cas concret pour voir s'il est templatisable en carrousel (ou autre
 // visuel). On démarre donc avec un seul cas détaillé ; on n'en ajoute un
-// second que si son format est vraiment différent du premier — pas pour
+// second que si son format est vraiment différent du premier, pas pour
 // lister davantage de preuves. Le lien vers un visuel existant de ce
 // résultat (anciennement une question à part dans "Visuels, besoins et
 // envies") est directement rattaché à chaque cas.
@@ -187,7 +187,7 @@ const preuvesSection = {
 // ci-dessus (rattaché au cas concret plutôt qu'isolé), donc cette section
 // n'est plus un bloc répétable. "Quels formats veux-tu utiliser
 // régulièrement" a été retiré : c'est redondant avec `formats_actuels`
-// (route floue) — la question ici porte plutôt sur l'envie/l'inexploré.
+// (route floue), la question ici porte plutôt sur l'envie/l'inexploré.
 // "Contexte photo" a été retiré (jugé inutile).
 const visuelsSection = {
   id: 'contenu_visuels',
@@ -230,7 +230,7 @@ const visuelsSection = {
   ],
 }
 
-// Nouveau — inspirations visuelles concrètes : des profils ou posts (LinkedIn
+// Nouveau (inspirations visuelles concrètes) : des profils ou posts (LinkedIn
 // ou Insta, peu importe le sujet) dont le client aime le style, le ton ou la
 // mise en forme.
 const referencesSection = {
@@ -277,7 +277,7 @@ const antiReferenceSection = {
 
 // Section la plus importante du volet pour Thomas : il ne fabrique pas des
 // visuels à l'unité mais des TEMPLATES réutilisables (banque de slides à
-// customiser, templates de post statique, templates d'infographie) — donc
+// customiser, templates de post statique, templates d'infographie), donc
 // plus il a d'idées variées ici, plus il peut couvrir de cas. Ce n'est donc
 // plus une section "optionnelle" façon brainstorm : on démarre avec 3 idées
 // demandées (pas 1), jusqu'à 8, et le champ "banque d'idées" permet de
@@ -288,7 +288,7 @@ const ideesSection = {
   kind: 'repeat',
   title: 'Tes idées de posts à templatiser',
   subtitle:
-    "C'est la section la plus importante : plus tu donnes d'idées variées (même en vrac, même pas rédigées), plus on pourra te construire de templates réutilisables — carrousel, infographie, ou post statique — que tu n'auras plus qu'à remplir toi-même derrière. Donne-en plusieurs, pas juste une.",
+    "C'est la section la plus importante : plus tu donnes d'idées variées (même en vrac, même pas rédigées), plus on pourra te construire de templates réutilisables (carrousel, infographie, ou post statique) que tu n'auras plus qu'à remplir toi-même derrière. Donne-en plusieurs, pas juste une.",
   fields: [
     {
       key: 'banque_idees',
@@ -341,7 +341,7 @@ export const contenuFinalSection = {
 }
 
 // La question de branchement, présentée comme une section à part entière
-// (un seul champ `route`) — exportée pour que Contenu.jsx ET Espace.jsx (vue
+// (un seul champ `route`), exportée pour que Contenu.jsx ET Espace.jsx (vue
 // "Revoir mes réponses") partagent exactement la même définition.
 export const routeSection = {
   id: 'route',
@@ -353,8 +353,8 @@ export const routeSection = {
 }
 
 // Liste complète des sections d'un parcours donné (branchement + sections de
-// la route + les sections communes aux 2 routes — preuve, visuels,
-// inspirations, idées en vrac — + section finale), utilisée pour le récap
+// la route + les sections communes aux 2 routes (preuve, visuels,
+// inspirations, idées en vrac) + section finale), utilisée pour le récap
 // (titres/labels corrects) comme pour le moteur de saisie. La numérotation
 // (num) des sections du milieu est recalculée ici plutôt que figée sur
 // chaque section, pour rester correcte même si une route gagne ou perd une
