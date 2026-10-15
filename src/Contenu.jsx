@@ -362,7 +362,7 @@ export default function Contenu({ email, clientName, initialAnswers, initialStat
               section.expandable &&
               repeatCountFor(section) < (section.repeatMax ?? Infinity) && (
                 <button type="button" className="repeat-add-btn" onClick={() => addRepeat(section)}>
-                  + Ajouter un {section.repeatLabel?.toLowerCase()}
+                  + Ajouter {section.repeatArticle || 'un'} {section.repeatLabel?.toLowerCase()}
                 </button>
               )}
 
