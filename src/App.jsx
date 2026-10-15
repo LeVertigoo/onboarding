@@ -9,15 +9,28 @@ function fieldKey(sectionId, repIndex, fieldKey) {
     : `${sectionId}.${repIndex}.${fieldKey}`
 }
 
-// Local-only draft autosave — never touches Supabase. Keeps the client from
-// losing 25-30 minutes of answers to a refresh, an accidental tab close, or
-// a phone locking mid-session. Best-effort: private browsing / a full quota
-// simply falls back to no persistence, same as before this existed.
-const DRAFT_KEY = 'kalanis-workbook-refonte-1500-draft-v1'
+// Local-only draft autosave, ne touche jamais à Supabase. Garde le client de
+// perdre 25 à 30 minutes de réponses à cause d'un rafraîchissement, d'un
+// onglet fermé par erreur, ou d'un téléphone qui se verrouille en cours de
+// route. Best-effort : navigation privée ou quota plein retombe simplement
+// sur l'absence de persistance locale, comme avant l'ajout de ce mécanisme.
+//
+// Clé historique (fixe, sans email) conservée telle quelle pour que le
+// brouillon déjà en cours d'un client sous l'ancien système (arrivé en mode
+// legacy via Root.jsx, sans prefillIdentity) continue d'être retrouvé sans
+// rien casser. Pour tout nouveau client passant par l'espace (prefillIdentity
+// connu dès le montage), la clé est en plus scopée par email : sur un
+// appareil partagé par deux clients différents, chacun garde son propre
+// brouillon local au lieu d'écraser ou de récupérer celui de l'autre.
+const DRAFT_KEY_LEGACY = 'kalanis-workbook-refonte-1500-draft-v1'
 
-function loadDraft() {
+function draftKeyFor(email) {
+  return email ? `${DRAFT_KEY_LEGACY}::${email.trim().toLowerCase()}` : DRAFT_KEY_LEGACY
+}
+
+function loadDraft(email) {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY)
+    const raw = localStorage.getItem(draftKeyFor(email))
     if (!raw) return null
     const parsed = JSON.parse(raw)
     return parsed && typeof parsed === 'object' ? parsed : null
@@ -26,19 +39,19 @@ function loadDraft() {
   }
 }
 
-function saveDraft(data) {
+function saveDraft(data, email) {
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(data))
+    localStorage.setItem(draftKeyFor(email), JSON.stringify(data))
   } catch {
-    // storage full / disabled — the form still works, it just won't persist
+    // Stockage plein ou désactivé : le formulaire fonctionne quand même, il ne persistera juste pas localement.
   }
 }
 
-function clearDraft() {
+function clearDraft(email) {
   try {
-    localStorage.removeItem(DRAFT_KEY)
+    localStorage.removeItem(draftKeyFor(email))
   } catch {
-    // nothing to do
+    // Rien à faire.
   }
 }
 
@@ -48,7 +61,7 @@ function clearDraft() {
 // extraCounts à partir du nombre d'items déjà enregistrés). `__meta` est une
 // clé technique ajoutée aux réponses sauvegardées à distance (voir
 // `save_draft` / `complete_workbook` plus bas) pour retenir l'étape où le
-// client s'était arrêté — elle ne correspond à aucune section réelle donc
+// client s'était arrêté. Elle ne correspond à aucune section réelle, donc
 // elle est ignorée partout ailleurs (récap, export, admin).
 function hydrateFromStructured(structured) {
   const flat = {}
@@ -82,8 +95,8 @@ function hydrateFromStructured(structured) {
 
 // Rendu partagé pour 'choice' (sélection simple) et 'multichoice' (plusieurs) :
 // bulles compactes par défaut, ou grandes cartes rectangulaires avec
-// description sous le libellé dès qu'au moins une option a une `description`
-// — utile pour une question où il faut expliquer concrètement ce que chaque
+// description sous le libellé dès qu'au moins une option a une `description`,
+// utile pour une question où il faut expliquer concrètement ce que chaque
 // réponse signifie (ex. la question de branchement du volet 2).
 function OptionRow({ options, value, onPick, multi }) {
   const asCards = (options || []).some((o) => o.description)
@@ -195,7 +208,7 @@ function FieldList({ fields, sectionId, answers, setValue }) {
       } else if (f.showIf.in && !f.showIf.in.includes(controlValue)) {
         return null
       } else if (f.showIf.includes) {
-        // Sibling is a multichoice (array) — show only if it includes this value.
+        // Sibling is a multichoice (array): show only if it includes this value.
         const arr = Array.isArray(controlValue) ? controlValue : []
         if (!arr.includes(f.showIf.includes)) return null
       }
@@ -260,7 +273,7 @@ export default function App({ onBackToEspace, initialAnswers, initialStatus, pre
   // déjà donnés sur la home page), on pré-remplit juste l'intro pour ne pas
   // les lui redemander. Calculé une seule fois au montage.
   const [hydration] = useState(() => {
-    const local = loadDraft()
+    const local = loadDraft(prefillIdentity?.email)
     if (local) return { restored: true, stepIndex: local.stepIndex ?? 0, answers: local.answers ?? {}, extraCounts: local.extraCounts ?? {} }
     if (initialStatus === 'draft' && initialAnswers) {
       const h = hydrateFromStructured(initialAnswers)
@@ -289,10 +302,10 @@ export default function App({ onBackToEspace, initialAnswers, initialStatus, pre
   useEffect(() => {
     if (status === 'done') return
     const id = setTimeout(() => {
-      saveDraft({ stepIndex, answers, extraCounts, savedAt: Date.now() })
+      saveDraft({ stepIndex, answers, extraCounts, savedAt: Date.now() }, prefillIdentity?.email)
     }, 400)
     return () => clearTimeout(id)
-  }, [stepIndex, answers, extraCounts, status])
+  }, [stepIndex, answers, extraCounts, status, prefillIdentity])
 
   const section = sections[stepIndex]
   const total = sections.length
@@ -366,13 +379,20 @@ export default function App({ onBackToEspace, initialAnswers, initialStatus, pre
   const clientEmail = (answers['intro.client_email'] || '').trim().toLowerCase()
 
   // Brouillon sauvegardé en base dès que l'email est connu (première section
-  // remplie), en plus du brouillon local ci-dessus — permet de reprendre
+  // remplie), en plus du brouillon local ci-dessus : permet de reprendre
   // depuis un autre appareil via l'espace client. Best-effort : si l'appel
   // échoue (hors-ligne...), le brouillon local reste la sauvegarde de secours
   // exactement comme avant.
   useEffect(() => {
     if (status === 'done' || !clientEmail) return
     const id = setTimeout(() => {
+      // Le client Supabase renvoie un objet "thenable" (il n'implémente que
+      // .then, pas .catch), donc .catch(() => {}) levait une erreur
+      // ("...catch is not a function") avant même d'envoyer la requête : le
+      // brouillon n'était en pratique jamais sauvegardé en base. .then()
+      // avec un callback qui ignore `error` est le bon best-effort ici (si
+      // l'appel échoue, hors-ligne par exemple, le brouillon local reste la
+      // sauvegarde de secours, exactement comme le dit le commentaire ci-dessus).
       supabase
         .rpc('save_draft', {
           p_email: clientEmail,
@@ -380,7 +400,7 @@ export default function App({ onBackToEspace, initialAnswers, initialStatus, pre
           p_workbook_type: 'refonte_1500',
           p_answers: { ...payload, __meta: { stepIndex } },
         })
-        .catch(() => {})
+        .then(() => {})
     }, 800)
     return () => clearTimeout(id)
   }, [payload, stepIndex, status, clientEmail, clientName])
@@ -399,15 +419,15 @@ export default function App({ onBackToEspace, initialAnswers, initialStatus, pre
       setStatus('error')
     } else {
       setStatus('done')
-      clearDraft()
-      // Best-effort Slack notification — never blocks or fails the submission
-      // if it errors out (e.g. webhook not configured yet).
+      clearDraft(prefillIdentity?.email)
+      // Notification Slack best-effort : ne bloque jamais la soumission et
+      // n'échoue jamais visiblement si elle rate (ex. webhook pas encore configuré).
       fetch('/api/notify-slack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientName,
-          clientEmail: answers['intro.client_email'] || '',
+          clientEmail,
         }),
       }).catch(() => {})
     }
@@ -470,7 +490,7 @@ export default function App({ onBackToEspace, initialAnswers, initialStatus, pre
         <div className="main-content">
           {draftRestored && status === 'idle' && !draftBannerDismissed && (
             <div className="draft-banner">
-              <span>Reprise de ta session précédente — tes réponses ont été restaurées.</span>
+              <span>Reprise de ta session précédente : tes réponses ont été restaurées.</span>
               <button type="button" onClick={() => setDraftBannerDismissed(true)}>
                 Fermer
               </button>
@@ -532,7 +552,7 @@ export default function App({ onBackToEspace, initialAnswers, initialStatus, pre
               section.expandable &&
               repeatCountFor(section) < (section.repeatMax ?? Infinity) && (
                 <button type="button" className="repeat-add-btn" onClick={() => addRepeat(section)}>
-                  + Ajouter un {section.repeatLabel?.toLowerCase()}
+                  + Ajouter {section.repeatArticle || 'un'} {section.repeatLabel?.toLowerCase()}
                 </button>
               )}
 
