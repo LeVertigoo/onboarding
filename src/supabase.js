@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Same Supabase project already used by every other Kalanis workbook
-// (workbook-organisation, workbook-positionnement-voix) — every submission
+// (workbook-organisation, workbook-positionnement-voix): every submission
 // lands in the same `client_workbooks` table, tagged by `workbook_type`
 // ('refonte_1500' for this one). No new table or SQL needed: the table and
 // its RLS policies (anon insert only, authenticated select) already exist.
