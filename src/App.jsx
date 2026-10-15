@@ -80,6 +80,39 @@ function hydrateFromStructured(structured) {
   return { flat, extraCounts, stepIndex }
 }
 
+// Rendu partagé pour 'choice' (sélection simple) et 'multichoice' (plusieurs) :
+// bulles compactes par défaut, ou grandes cartes rectangulaires avec
+// description sous le libellé dès qu'au moins une option a une `description`
+// — utile pour une question où il faut expliquer concrètement ce que chaque
+// réponse signifie (ex. la question de branchement du volet 2).
+function OptionRow({ options, value, onPick, multi }) {
+  const asCards = (options || []).some((o) => o.description)
+  return (
+    <div className={'choice-row' + (asCards ? ' choice-row-cards' : '')}>
+      {(options || []).map((opt) => {
+        const selected = multi ? value.includes(opt.value) : value === opt.value
+        return (
+          <button
+            type="button"
+            key={opt.value}
+            className={(asCards ? 'choice-card' : 'choice-btn') + (selected ? (asCards ? ' choice-card-selected' : ' choice-btn-selected') : '')}
+            onClick={() => onPick(opt.value)}
+          >
+            {asCards ? (
+              <>
+                <div className="choice-card-label">{opt.label}</div>
+                <div className="choice-card-description">{opt.description}</div>
+              </>
+            ) : (
+              opt.label
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function Field({ label, type, placeholder, value, onChange, min, max, options, rows }) {
   return (
     <div className="field">
@@ -109,40 +142,17 @@ function Field({ label, type, placeholder, value, onChange, min, max, options, r
           })}
         </div>
       ) : type === 'choice' ? (
-        <div className="choice-row">
-          {(options || []).map((opt) => {
-            const selected = value === opt.value
-            return (
-              <button
-                type="button"
-                key={opt.value}
-                className={'choice-btn' + (selected ? ' choice-btn-selected' : '')}
-                onClick={() => onChange(opt.value)}
-              >
-                {opt.label}
-              </button>
-            )
-          })}
-        </div>
+        <OptionRow options={options} value={value} onPick={(v) => onChange(v)} />
       ) : type === 'multichoice' ? (
-        <div className="choice-row">
-          {(options || []).map((opt) => {
+        <OptionRow
+          options={options}
+          value={Array.isArray(value) ? value : []}
+          multi
+          onPick={(v) => {
             const current = Array.isArray(value) ? value : []
-            const selected = current.includes(opt.value)
-            return (
-              <button
-                type="button"
-                key={opt.value}
-                className={'choice-btn' + (selected ? ' choice-btn-selected' : '')}
-                onClick={() =>
-                  onChange(selected ? current.filter((v) => v !== opt.value) : [...current, opt.value])
-                }
-              >
-                {opt.label}
-              </button>
-            )
-          })}
-        </div>
+            onChange(current.includes(v) ? current.filter((x) => x !== v) : [...current, v])
+          }}
+        />
       ) : (
         <input
           type="text"
@@ -425,7 +435,7 @@ export default function App({ onBackToEspace, initialAnswers, initialStatus, pre
       <aside className="sidebar">
         <div className="sidebar-brand">KALANIS</div>
         {onBackToEspace && (
-          <button type="button" className="draft-banner" style={{ marginBottom: 12 }} onClick={onBackToEspace}>
+          <button type="button" className="draft-banner" style={{ marginBottom: 12, cursor: 'pointer' }} onClick={onBackToEspace}>
             ← Mon espace
           </button>
         )}

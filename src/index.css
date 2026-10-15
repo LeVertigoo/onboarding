@@ -479,6 +479,49 @@ h1 {
   color: #fff;
 }
 
+/* Variante "carte" : rectangle pleine largeur avec une description sous le
+   libellé, utilisée quand une question a besoin d'expliquer concrètement ce
+   que chaque réponse signifie (ex. la question de branchement du volet 2)
+   plutôt que des petites bulles de choix rapide. */
+.choice-row-cards {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice-card {
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--body);
+  cursor: pointer;
+}
+
+.choice-card:hover {
+  border-color: var(--blue);
+}
+
+.choice-card-selected {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.choice-card-label {
+  font-weight: 700;
+  font-size: 14.5px;
+  margin-bottom: 4px;
+}
+
+.choice-card-description {
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.8;
+}
+
 /* ---------------- Scale field ---------------- */
 .scale-row {
   display: flex;
