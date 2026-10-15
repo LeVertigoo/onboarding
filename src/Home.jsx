@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 // Première page : le client renseigne nom + email une seule fois, ce qui
-// crée (virtuellement — rien n'est écrit en base ici) son "espace" avec les
+// crée (virtuellement, rien n'est écrit en base ici) son "espace" avec les
 // deux volets. S'il revient plus tard avec les mêmes infos, il retrouve
 // l'état de ses deux volets (voir Espace.jsx / Root.jsx).
 export default function Home({ onIdentified }) {
