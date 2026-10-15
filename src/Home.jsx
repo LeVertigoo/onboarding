@@ -23,7 +23,7 @@ export default function Home({ onIdentified }) {
     <div className="admin-shell admin-login-shell">
       <form className="admin-login-card" onSubmit={handleSubmit}>
         <div className="sidebar-brand">KALANIS</div>
-        <h2>Ton espace workbook</h2>
+        <h2>L'Espace de l'Évidence</h2>
         <p className="subtitle">
           Entre ton nom et ton email pour accéder à ton espace. Si tu as déjà commencé, tu
           retrouveras tes réponses en cours.
