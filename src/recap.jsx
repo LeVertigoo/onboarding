@@ -14,6 +14,30 @@ import { sections as defaultSections, WORKBOOK_TITLE as defaultTitle } from './d
 // keeps behaving exactly as before. The new volet "Création de contenu"
 // (Contenu.jsx) passes its own sections/title explicitly instead.
 
+// A value is either a string (text/textarea/scale/choice) or an array of
+// strings (multichoice). These two helpers centralize "is it filled in" and
+// "how should it read as text", so every place that touches an answer value
+// behaves correctly for both shapes without checking Array.isArray itself.
+function hasValue(v) {
+  if (Array.isArray(v)) return v.length > 0
+  return !!(v && String(v).trim())
+}
+
+// Pour un champ 'choice'/'multichoice', les réponses stockées sont les
+// `value` internes des options (ex. 'etablie'), pas leur libellé affiché
+// (ex. "J'ai déjà une stratégie bien établie") — contrairement aux champs du
+// volet 1 historique, où value === label par convention pour éviter ce
+// problème. On résout ici l'un ou l'autre cas sans distinction : si le champ
+// a des `options`, on retrouve le libellé ; sinon (text/textarea/scale) on
+// affiche la valeur telle quelle.
+function displayValue(v, field) {
+  const resolveOne = (one) => {
+    const opt = field?.options?.find((o) => o.value === one)
+    return opt ? opt.label : one
+  }
+  return Array.isArray(v) ? v.map(resolveOne).join(', ') : resolveOne(v)
+}
+
 export function sectionTitleFor(sectionId, sectionsList = defaultSections) {
   const s = sectionsList.find((sec) => sec.id === sectionId)
   // Plain "Section N — Titre" — some section titles already contain their
@@ -22,18 +46,21 @@ export function sectionTitleFor(sectionId, sectionsList = defaultSections) {
   return s ? `Section ${s.num} — ${s.title}` : sectionId
 }
 
-export function fieldLabelFor(sectionId, key, sectionsList = defaultSections) {
+function fieldDefFor(sectionId, key, sectionsList) {
   const s = sectionsList.find((sec) => sec.id === sectionId)
-  if (!s) return key
+  if (!s) return null
   const fields = s.kind === 'repeat' ? s.repeatFields : s.fields
-  const f = fields?.find((fl) => fl.key === key)
+  return fields?.find((fl) => fl.key === key) || null
+}
+
+export function fieldLabelFor(sectionId, key, sectionsList = defaultSections) {
+  const f = fieldDefFor(sectionId, key, sectionsList)
   return f ? f.label : key
 }
 
-function preambleFieldLabelFor(sectionId, key, sectionsList) {
+function preambleFieldDefFor(sectionId, key, sectionsList) {
   const s = sectionsList.find((sec) => sec.id === sectionId)
-  const f = s?.fields?.find((fl) => fl.key === key)
-  return f ? f.label : key
+  return s?.fields?.find((fl) => fl.key === key) || null
 }
 
 // Reshapes the answers into { id, title, isRepeat, preamble: [{label,value}], items: [{ index, entries: [{label,value}] }] },
@@ -52,21 +79,30 @@ export function buildRecapSections(answers, sectionsList = defaultSections) {
       if (isRepeat) {
         const fieldsObj = value.fields || {}
         preamble = Object.entries(fieldsObj)
-          .filter(([, v]) => v && String(v).trim())
-          .map(([k, v]) => ({ label: preambleFieldLabelFor(s.id, k, sectionsList), value: v }))
+          .filter(([, v]) => hasValue(v))
+          .map(([k, v]) => {
+            const f = preambleFieldDefFor(s.id, k, sectionsList)
+            return { label: f ? f.label : k, value: displayValue(v, f) }
+          })
         const rawItems = Array.isArray(value.items) ? value.items : Array.isArray(value) ? value : []
         items = rawItems
           .map((item, i) => ({
             index: i,
             entries: Object.entries(item || {})
-              .filter(([, v]) => v && String(v).trim())
-              .map(([k, v]) => ({ label: fieldLabelFor(s.id, k, sectionsList), value: v })),
+              .filter(([, v]) => hasValue(v))
+              .map(([k, v]) => {
+                const f = fieldDefFor(s.id, k, sectionsList)
+                return { label: f ? f.label : k, value: displayValue(v, f) }
+              }),
           }))
           .filter((it) => it.entries.length > 0)
       } else {
         const entries = Object.entries(value || {})
-          .filter(([, v]) => v && String(v).trim())
-          .map(([k, v]) => ({ label: fieldLabelFor(s.id, k, sectionsList), value: v }))
+          .filter(([, v]) => hasValue(v))
+          .map(([k, v]) => {
+            const f = fieldDefFor(s.id, k, sectionsList)
+            return { label: f ? f.label : k, value: displayValue(v, f) }
+          })
         items = entries.length > 0 ? [{ index: 0, entries }] : []
       }
 

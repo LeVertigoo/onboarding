@@ -68,7 +68,7 @@ export default function Root() {
   }
 
   if (view === 'v1') {
-    return <App onBackToEspace={() => setView('espace')} />
+    return <Volet1Loader identity={identity} onBack={() => setView('espace')} />
   }
 
   if (view === 'v2') {
@@ -81,6 +81,47 @@ export default function Root() {
       onOpenVolet1={() => setView('v1')}
       onOpenVolet2={() => setView('v2')}
       onLogout={handleLogout}
+    />
+  )
+}
+
+// Même principe que Volet2Loader ci-dessous, pour le volet 1 : va chercher
+// un éventuel brouillon déjà enregistré en base avant d'ouvrir App.jsx,
+// pour permettre la reprise même depuis un autre appareil. Si le volet est
+// déjà 'completed', Espace.jsx propose "Revoir mes réponses" (lecture
+// seule) à la place de "Continuer" — ce composant ne gère donc en pratique
+// que les cas 'draft' et 'aucun brouillon'.
+function Volet1Loader({ identity, onBack }) {
+  const [state, setState] = useState({ loading: true, answers: null, status: null })
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .rpc('get_espace', { p_email: identity.email })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        const row = !error && data ? data.find((r) => r.workbook_type === 'refonte_1500') : null
+        setState({ loading: false, answers: row?.answers || null, status: row?.status || null })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [identity.email])
+
+  if (state.loading) {
+    return (
+      <div className="admin-shell">
+        <p>Chargement...</p>
+      </div>
+    )
+  }
+
+  return (
+    <App
+      onBackToEspace={onBack}
+      initialAnswers={state.answers}
+      initialStatus={state.status}
+      prefillIdentity={identity}
     />
   )
 }

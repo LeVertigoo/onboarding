@@ -42,6 +42,44 @@ function clearDraft() {
   }
 }
 
+// Reconstruit l'état "plat" (utilisé pendant l'édition) à partir de la forme
+// structurée stockée en base (celle utilisée par le récap / l'admin / le
+// brouillon distant), y compris les sections 'repeat' (reconstruction de
+// extraCounts à partir du nombre d'items déjà enregistrés). `__meta` est une
+// clé technique ajoutée aux réponses sauvegardées à distance (voir
+// `save_draft` / `complete_workbook` plus bas) pour retenir l'étape où le
+// client s'était arrêté — elle ne correspond à aucune section réelle donc
+// elle est ignorée partout ailleurs (récap, export, admin).
+function hydrateFromStructured(structured) {
+  const flat = {}
+  const extraCounts = {}
+  if (structured) {
+    sections.forEach((s) => {
+      const value = structured[s.id]
+      if (!value) return
+      if (s.kind === 'repeat') {
+        const fieldsObj = value.fields || {}
+        ;(s.fields || []).forEach((f) => {
+          if (fieldsObj[f.key] !== undefined) flat[fieldKey(s.id, undefined, f.key)] = fieldsObj[f.key]
+        })
+        const items = Array.isArray(value.items) ? value.items : []
+        items.forEach((item, i) => {
+          s.repeatFields.forEach((f) => {
+            if (item[f.key] !== undefined) flat[fieldKey(s.id, i, f.key)] = item[f.key]
+          })
+        })
+        if (items.length > 0) extraCounts[s.id] = items.length
+      } else {
+        Object.entries(value).forEach(([k, v]) => {
+          flat[fieldKey(s.id, undefined, k)] = v
+        })
+      }
+    })
+  }
+  const stepIndex = structured?.__meta?.stepIndex ?? 0
+  return { flat, extraCounts, stepIndex }
+}
+
 function Field({ label, type, placeholder, value, onChange, min, max, options, rows }) {
   return (
     <div className="field">
@@ -86,6 +124,25 @@ function Field({ label, type, placeholder, value, onChange, min, max, options, r
             )
           })}
         </div>
+      ) : type === 'multichoice' ? (
+        <div className="choice-row">
+          {(options || []).map((opt) => {
+            const current = Array.isArray(value) ? value : []
+            const selected = current.includes(opt.value)
+            return (
+              <button
+                type="button"
+                key={opt.value}
+                className={'choice-btn' + (selected ? ' choice-btn-selected' : '')}
+                onClick={() =>
+                  onChange(selected ? current.filter((v) => v !== opt.value) : [...current, opt.value])
+                }
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
       ) : (
         <input
           type="text"
@@ -101,7 +158,7 @@ function Field({ label, type, placeholder, value, onChange, min, max, options, r
 function RecapCard({ items, answers }) {
   const resolved = items
     .map((it) => ({ ...it, value: answers[it.path] }))
-    .filter((it) => it.value && it.value.trim())
+    .filter((it) => Array.isArray(it.value) ? it.value.length > 0 : it.value && it.value.trim())
   if (resolved.length === 0) return null
   return (
     <div className="recap-card">
@@ -109,7 +166,7 @@ function RecapCard({ items, answers }) {
       {resolved.map((it) => (
         <div className="recap-item" key={it.path}>
           <div className="recap-label">{it.label}</div>
-          <div className="recap-value">{it.value}</div>
+          <div className="recap-value">{Array.isArray(it.value) ? it.value.join(', ') : it.value}</div>
         </div>
       ))}
     </div>
@@ -127,6 +184,10 @@ function FieldList({ fields, sectionId, answers, setValue }) {
         if (!controlValue || !String(controlValue).trim()) return null
       } else if (f.showIf.in && !f.showIf.in.includes(controlValue)) {
         return null
+      } else if (f.showIf.includes) {
+        // Sibling is a multichoice (array) — show only if it includes this value.
+        const arr = Array.isArray(controlValue) ? controlValue : []
+        if (!arr.includes(f.showIf.includes)) return null
       }
     }
     const prevField = idx > 0 ? fields[idx - 1] : null
@@ -181,13 +242,37 @@ function ChecklistCard({ items, filledIds, onJump }) {
   )
 }
 
-export default function App({ onBackToEspace } = {}) {
-  const [draftRestored] = useState(() => !!loadDraft())
+export default function App({ onBackToEspace, initialAnswers, initialStatus, prefillIdentity } = {}) {
+  // Priorité au brouillon local (le navigateur où le client est réellement en
+  // train de taper) ; sinon, s'il existe un brouillon côté base (ouvert
+  // depuis l'espace client, potentiellement depuis un autre appareil), on
+  // reprend depuis là ; sinon, si on arrive depuis l'espace client (nom/email
+  // déjà donnés sur la home page), on pré-remplit juste l'intro pour ne pas
+  // les lui redemander. Calculé une seule fois au montage.
+  const [hydration] = useState(() => {
+    const local = loadDraft()
+    if (local) return { restored: true, stepIndex: local.stepIndex ?? 0, answers: local.answers ?? {}, extraCounts: local.extraCounts ?? {} }
+    if (initialStatus === 'draft' && initialAnswers) {
+      const h = hydrateFromStructured(initialAnswers)
+      return { restored: true, stepIndex: h.stepIndex, answers: h.flat, extraCounts: h.extraCounts }
+    }
+    if (prefillIdentity?.email) {
+      return {
+        restored: false,
+        stepIndex: 0,
+        answers: { 'intro.client_name': prefillIdentity.clientName || '', 'intro.client_email': prefillIdentity.email },
+        extraCounts: {},
+      }
+    }
+    return { restored: false, stepIndex: 0, answers: {}, extraCounts: {} }
+  })
+
+  const [draftRestored] = useState(hydration.restored)
   const [draftBannerDismissed, setDraftBannerDismissed] = useState(false)
-  const [stepIndex, setStepIndex] = useState(() => loadDraft()?.stepIndex ?? 0)
-  const [answers, setAnswers] = useState(() => loadDraft()?.answers ?? {})
+  const [stepIndex, setStepIndex] = useState(hydration.stepIndex)
+  const [answers, setAnswers] = useState(hydration.answers)
   const [status, setStatus] = useState('idle') // idle | sending | done | error
-  const [extraCounts, setExtraCounts] = useState(() => loadDraft()?.extraCounts ?? {}) // sectionId -> current repeat count (for expandable repeat sections)
+  const [extraCounts, setExtraCounts] = useState(hydration.extraCounts) // sectionId -> current repeat count (for expandable repeat sections)
 
   // Autosave the draft locally on every change, debounced so it doesn't
   // write on every keystroke. Cleared once the submission actually succeeds.
@@ -268,13 +353,35 @@ export default function App({ onBackToEspace } = {}) {
     [payload]
   )
 
+  const clientEmail = (answers['intro.client_email'] || '').trim().toLowerCase()
+
+  // Brouillon sauvegardé en base dès que l'email est connu (première section
+  // remplie), en plus du brouillon local ci-dessus — permet de reprendre
+  // depuis un autre appareil via l'espace client. Best-effort : si l'appel
+  // échoue (hors-ligne...), le brouillon local reste la sauvegarde de secours
+  // exactement comme avant.
+  useEffect(() => {
+    if (status === 'done' || !clientEmail) return
+    const id = setTimeout(() => {
+      supabase
+        .rpc('save_draft', {
+          p_email: clientEmail,
+          p_client_name: clientName,
+          p_workbook_type: 'refonte_1500',
+          p_answers: { ...payload, __meta: { stepIndex } },
+        })
+        .catch(() => {})
+    }, 800)
+    return () => clearTimeout(id)
+  }, [payload, stepIndex, status, clientEmail, clientName])
+
   const handleSubmit = async () => {
     setStatus('sending')
-    const { error } = await supabase.from('client_workbooks').insert({
-      client_name: clientName,
-      client_email: (answers['intro.client_email'] || '').trim().toLowerCase(),
-      workbook_type: 'refonte_1500',
-      answers: payload,
+    const { error } = await supabase.rpc('complete_workbook', {
+      p_email: clientEmail,
+      p_client_name: clientName,
+      p_workbook_type: 'refonte_1500',
+      p_answers: payload,
     })
     if (error) {
       console.error(error)
@@ -317,6 +424,11 @@ export default function App({ onBackToEspace } = {}) {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">KALANIS</div>
+        {onBackToEspace && (
+          <button type="button" className="draft-banner" style={{ marginBottom: 12 }} onClick={onBackToEspace}>
+            ← Mon espace
+          </button>
+        )}
         <div className="sidebar-title">{WORKBOOK_TITLE.split(' · ').map((line, i) => (
           <span key={i}>{i > 0 && <br />}{line}</span>
         ))}</div>

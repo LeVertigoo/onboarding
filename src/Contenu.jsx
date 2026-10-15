@@ -21,6 +21,22 @@ function fieldKey(sectionId, key) {
   return `${sectionId}.${key}`
 }
 
+// Mêmes règles showIf que App.jsx (voir FieldList là-bas) : `in` pour un
+// champ simple, `includes` pour un sibling multichoice (tableau).
+function visibleFields(fields, sectionId, answers) {
+  return fields.filter((f) => {
+    if (!f.showIf) return true
+    const controlValue = answers[fieldKey(sectionId, f.showIf.field)]
+    if (f.showIf.notEmpty) return !!(controlValue && String(controlValue).trim())
+    if (f.showIf.in) return f.showIf.in.includes(controlValue)
+    if (f.showIf.includes) {
+      const arr = Array.isArray(controlValue) ? controlValue : []
+      return arr.includes(f.showIf.includes)
+    }
+    return true
+  })
+}
+
 const DRAFT_FALLBACK_KEY = 'kalanis-workbook-contenu-draft-fallback-v1'
 
 // Reconstruit l'état "plat" (utilisé pendant l'édition) à partir de la forme
@@ -58,6 +74,25 @@ function Field({ label, type, placeholder, value, onChange, rows, options }) {
                 key={opt.value}
                 className={'choice-btn' + (selected ? ' choice-btn-selected' : '')}
                 onClick={() => onChange(opt.value)}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+      ) : type === 'multichoice' ? (
+        <div className="choice-row">
+          {(options || []).map((opt) => {
+            const current = Array.isArray(value) ? value : []
+            const selected = current.includes(opt.value)
+            return (
+              <button
+                type="button"
+                key={opt.value}
+                className={'choice-btn' + (selected ? ' choice-btn-selected' : '')}
+                onClick={() =>
+                  onChange(selected ? current.filter((v) => v !== opt.value) : [...current, opt.value])
+                }
               >
                 {opt.label}
               </button>
@@ -235,7 +270,7 @@ export default function Contenu({ email, clientName, initialAnswers, initialStat
           {section.subtitle && <p className="subtitle">{section.subtitle}</p>}
 
           <div className="fields-area">
-            {section.fields.map((f) => (
+            {visibleFields(section.fields, section.id, answers).map((f) => (
               <Field
                 key={f.key}
                 label={f.label}
