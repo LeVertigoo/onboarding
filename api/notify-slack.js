@@ -2,7 +2,7 @@
 // successful Supabase insert and forwards a formatted message to Slack.
 //
 // The Slack Incoming Webhook URL is NEVER hardcoded here or committed to
-// the repo (this repo is public) — it must be set as an environment
+// the repo (this repo is public). It must be set as an environment
 // variable named SLACK_WEBHOOK_URL in the Vercel project settings
 // (Settings > Environment Variables), specific to THIS project (env vars
 // don't carry over from the workbook-positionnement-voix project). If it's
@@ -17,14 +17,19 @@ export default async function handler(req, res) {
 
   const webhookUrl = process.env.SLACK_WEBHOOK_URL
   if (!webhookUrl) {
-    // No webhook configured yet — succeed silently so the client doesn't
-    // treat this as a failure.
+    // No webhook configured yet, so this succeeds silently so the client
+    // doesn't treat it as a failure.
     res.status(200).json({ skipped: true })
     return
   }
 
   try {
-    const { clientName, clientEmail } = req.body || {}
+    // workbookLabel distingue le volet concerné dans le message Slack (ex.
+    // "Refonte 1500€" pour le volet 1, "Création de contenu" pour le volet
+    // 2). Par défaut sur "Refonte 1500€" pour rester compatible avec les
+    // appels existants qui n'envoient pas ce champ.
+    const { clientName, clientEmail, workbookLabel } = req.body || {}
+    const label = workbookLabel || 'Refonte 1500€'
 
     const adminUrl =
       process.env.WORKBOOK_ADMIN_URL || 'https://workbook-refonte-1500.vercel.app/?admin=1'
@@ -32,9 +37,7 @@ export default async function handler(req, res) {
     // Fallback plain-text summary (shown in notifications/previews that
     // don't render Block Kit) plus a real clickable Slack button linking
     // straight to the admin page.
-    const fallbackText = `Nouvelle réponse au workbook Refonte 1500€ — ${
-      clientName || 'Sans nom'
-    }`
+    const fallbackText = `Nouvelle réponse au workbook ${label} : ${clientName || 'Sans nom'}`
 
     const blocks = [
       {
@@ -42,7 +45,7 @@ export default async function handler(req, res) {
         text: {
           type: 'mrkdwn',
           text:
-            `📘 *Nouvelle réponse au workbook Refonte 1500€*\n` +
+            `📘 *Nouvelle réponse au workbook ${label}*\n` +
             `*Client :* ${clientName || 'Sans nom'}${clientEmail ? ` (${clientEmail})` : ''}`,
         },
       },
