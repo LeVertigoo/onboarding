@@ -1252,3 +1252,58 @@ h1 {
   font-size: 12px;
   color: #d64545;
 }
+
+/* ---------------- Admin : boutons des volets ---------------- */
+.admin-volets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 16px 16px;
+}
+.admin-volet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.admin-volet-btn:hover:not(:disabled) {
+  border-color: var(--blue);
+}
+.admin-volet-btn-open {
+  border-color: var(--blue);
+  background: rgba(1, 142, 187, 0.08);
+  color: var(--blue);
+}
+.admin-volet-btn:disabled {
+  cursor: default;
+  color: var(--muted);
+  background: var(--bg);
+  border-style: dashed;
+}
+.admin-volet-status {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.volet-status-done {
+  color: #1f7a4d;
+  background: #e3f4ea;
+}
+.volet-status-draft {
+  color: #9a5b00;
+  background: #fdf0d9;
+}
+.volet-status-none {
+  color: var(--muted);
+  background: #efede4;
+}
