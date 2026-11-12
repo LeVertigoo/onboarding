@@ -42,8 +42,9 @@ export const sections = [
     kind: 'single',
     title: 'Toi (la personne)',
     subtitle:
-      "Le cœur du workbook. Réponses courtes et spontanées, pas de réflexion structurée attendue. C'est ce qui permet à Thomas de retranscrire visuellement qui tu es, pas juste ce que tu fais.",
+      "Le cœur du workbook. Réponses courtes et spontanées, pas de réflexion structurée attendue. C'est ce qui permet à Thomas de retranscrire visuellement qui tu es, pas juste ce que tu fais. Astuce : si tu préfères parler qu'écrire, clique sur « Répondre à l'oral » sous chaque question, le texte s'écrit tout seul.",
     fields: [
+      // --- Le socle ---
       {
         key: 'presentation',
         label: 'Présente-toi comme si on ne se connaissait pas et qu\'on se croisait dans la rue.',
@@ -58,39 +59,27 @@ export const sections = [
         placeholder: 'Ex. je précise toujours que je viens de Marseille, ou que j\'ai bossé dans la restauration avant.',
         groupLabel: 'Le socle',
       },
-      {
-        key: 'trois_mots',
-        label: 'Si tes proches devaient te décrire en 3 mots, ce serait lesquels ?',
-        type: 'text',
-        placeholder: 'Ex. direct, curieux, engagé',
-        groupLabel: 'Le socle',
-      },
-      {
-        key: 'qui_es_tu',
-        label: 'Sans utiliser aucun mot "professionnel" (pas de "expert", "consultant", etc.), qui es-tu ?',
-        type: 'textarea',
-        placeholder: 'Ex. quelqu\'un qui aime comprendre comment les choses fonctionnent avant de les expliquer aux autres.',
-        groupLabel: 'Le socle',
-      },
+
+      // --- Le moteur ---
       {
         key: 'anime',
         label: 'Qu\'est-ce qui t\'anime au quotidien, dans ta vie, pas juste dans ton travail ?',
         type: 'textarea',
-        placeholder: 'Ex. apprendre des trucs inutiles, bricoler, débattre avec mes proches.',
+        placeholder: 'Ex. je suis chaque match de l\'OM, et quand ils perdent, je ne suis pas à 100% de la semaine.',
         groupLabel: 'Le moteur',
       },
       {
-        key: 'agace',
-        label: 'Qu\'est-ce qui t\'agace ou te met en colère profondément ?',
+        key: 'moment_toi',
+        label: 'À quel moment tu te sens vraiment toi ?',
         type: 'textarea',
-        placeholder: 'Pas besoin que ce soit lié au travail. Ce qui t\'énerve en dit souvent plus long sur tes valeurs que ce que tu affirmes aimer.',
+        placeholder: 'Ex. quand je crie et saute partout dans mon salon parce que l\'OM vient de marquer.',
         groupLabel: 'Le moteur',
       },
       {
         key: 'passion',
-        label: 'Une passion ou un truc que tu fais en dehors du travail qui te représente bien ?',
+        label: 'Une passion ou un truc que tu fais en dehors du travail qui te représente bien ? Est-ce que ça a un impact sur ta façon de bosser ou sur ton business ? Comment ?',
         type: 'textarea',
-        placeholder: 'Ex. je fais de la boxe depuis 10 ans, ça façonne ma façon de bosser.',
+        placeholder: 'Ex. je fais de la boxe depuis 10 ans : j\'ai appris à encaisser et à revenir, et c\'est exactement comme ça que je gère mes périodes sans clients.',
         groupLabel: 'Le moteur',
       },
       {
@@ -101,9 +90,32 @@ export const sections = [
         groupLabel: 'Le moteur',
       },
       {
-        key: 'caractere',
-        label: 'Comment tu qualifierais ton caractère ?',
-        type: 'choice',
+        key: 'references',
+        label: 'Des films, des livres, des musiques ou des personnes qui t\'ont marqué ? Et pourquoi ?',
+        type: 'textarea',
+        placeholder: 'Ex. Rocky, parce que je me reconnais dans celui qui bosse dans l\'ombre. Ou ma grand-mère, qui ne lâchait jamais rien.',
+        groupLabel: 'Le moteur',
+      },
+      {
+        key: 'agace',
+        label: 'Qu\'est-ce qui t\'agace ou te met en colère profondément ? Et à l\'inverse, qu\'est-ce que tu défends ?',
+        type: 'textarea',
+        placeholder: 'Pas besoin que ce soit lié au travail. Ce qui t\'énerve en dit souvent plus long sur tes valeurs que ce que tu affirmes aimer.',
+        groupLabel: 'Le moteur',
+      },
+
+      // --- Le caractère ---
+      {
+        key: 'proches_disent',
+        label: 'Si tes proches devaient te décrire, ils diraient quoi ? Les qualités, mais aussi ce qu\'ils te reprochent gentiment.',
+        type: 'textarea',
+        placeholder: 'Ex. fiable mais têtu. Toujours en retard, mais toujours là.',
+        groupLabel: 'Le caractère',
+      },
+      {
+        key: 'caractere_traits',
+        label: 'Comment tu qualifierais ton caractère ? (1 ou 2 choix max)',
+        type: 'multichoice',
         options: [
           { value: 'Direct, sans détour', label: 'Direct, sans détour' },
           { value: 'Calme, posé', label: 'Calme, posé' },
@@ -119,8 +131,24 @@ export const sections = [
         label: 'Dis-m\'en plus.',
         type: 'textarea',
         placeholder: 'Pourquoi ce choix, un exemple concret qui l\'illustre.',
-        showIf: { field: 'caractere', notEmpty: true },
+        showIf: { field: 'caractere_traits', notEmpty: true },
         groupLabel: 'Le caractère',
+      },
+      {
+        key: 'surprend',
+        label: 'Qu\'est-ce qui surprend les gens quand ils apprennent à mieux te connaître ? Ce qu\'on pense de toi au premier abord et qui est faux.',
+        type: 'textarea',
+        placeholder: 'Ex. on me croit froid au premier abord, alors que je suis le premier à faire des blagues.',
+        groupLabel: 'Le caractère',
+      },
+
+      // --- Le vécu ---
+      {
+        key: 'racines',
+        label: 'D\'où tu viens ? Pas juste la ville : le milieu, l\'ambiance à la maison, ce qu\'on valorisait autour de toi quand tu as grandi.',
+        type: 'textarea',
+        placeholder: 'Ex. fils de commerçants, le samedi je tenais la caisse. Ou : famille de profs, on débattait de tout à table.',
+        groupLabel: 'Le vécu',
       },
       {
         key: 'virage',
@@ -131,10 +159,19 @@ export const sections = [
       },
       {
         key: 'declic',
-        label: 'Pourquoi fais-tu ce métier aujourd\'hui, et pas autre chose ?',
+        label: 'Pourquoi fais-tu ce métier aujourd\'hui, et pas autre chose ? Il y a eu un moment où tu t\'es dit : c\'est ça que je veux faire ?',
         type: 'textarea',
-        placeholder: 'Par exemple : j\'ai arrêté de faire ce qu\'on me disait de faire, j\'ai construit ma propre approche.',
+        placeholder: 'Ex. le jour où un client m\'a dit que je l\'avais plus aidé en 1h que son agence en 6 mois.',
         groupLabel: 'Le vécu',
+      },
+
+      // --- Le regard extérieur ---
+      {
+        key: 'proches_presentent',
+        label: 'Quand tes proches parlent de toi à quelqu\'un qui ne te connaît pas, ils te présentent comment ?',
+        type: 'textarea',
+        placeholder: 'Ex. « c\'est mon fils, il fait un truc sur LinkedIn, j\'ai jamais trop compris mais ça a l\'air de marcher ».',
+        groupLabel: 'Le regard extérieur',
       },
       {
         key: 'clients_disent',
@@ -150,6 +187,15 @@ export const sections = [
         placeholder: 'Ex. une remarque qu\'un client ou un proche t\'a faite et que tu n\'as jamais oubliée.',
         groupLabel: 'Le regard extérieur',
       },
+    ],
+    // Questions retirées de la section le 12/11/2026. Jamais affichées dans le
+    // formulaire, mais gardées ici pour que les réponses déjà reçues (ou les
+    // brouillons en cours) gardent leur libellé dans le récap / l'admin et ne
+    // soient pas perdues à la prochaine sauvegarde du brouillon.
+    legacyFields: [
+      { key: 'trois_mots', label: 'Si tes proches devaient te décrire en 3 mots, ce serait lesquels ?' },
+      { key: 'qui_es_tu', label: 'Sans utiliser aucun mot "professionnel" (pas de "expert", "consultant", etc.), qui es-tu ?' },
+      { key: 'caractere', label: 'Comment tu qualifierais ton caractère ?' },
     ],
   },
 
