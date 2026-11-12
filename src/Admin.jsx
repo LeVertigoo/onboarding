@@ -149,9 +149,9 @@ function normKey(row) {
 }
 
 function voletBadge(row) {
-  if (!row) return { label: 'Pas commencé', cls: '' }
-  if (row.status === 'draft') return { label: 'Brouillon', cls: 'step-active' }
-  return { label: 'Terminé', cls: 'step-done' }
+  if (!row) return { label: 'Pas commencé', cls: 'volet-status-none' }
+  if (row.status === 'draft') return { label: 'Brouillon', cls: 'volet-status-draft' }
+  return { label: 'Terminé', cls: 'volet-status-done' }
 }
 
 // Regroupe les lignes par client (email en priorité, nom en repli pour les
@@ -309,21 +309,21 @@ export default function Admin() {
               </button>
 
               {isOpen && (
-                <div style={{ padding: '12px 16px', display: 'flex', gap: 10 }}>
-                  <button
-                    className={'step' + (openVolet === 'refonte_1500' ? ' step-active' : b1.cls ? ' ' + b1.cls : '')}
-                    onClick={() => setOpenVolet(openVolet === 'refonte_1500' ? null : 'refonte_1500')}
-                    disabled={!g.volets.refonte_1500}
-                  >
-                    <span className="step-label">Volet 1 : Cadrage & Refonte ({b1.label})</span>
-                  </button>
-                  <button
-                    className={'step' + (openVolet === 'contenu' ? ' step-active' : b2.cls ? ' ' + b2.cls : '')}
-                    onClick={() => setOpenVolet(openVolet === 'contenu' ? null : 'contenu')}
-                    disabled={!g.volets.contenu}
-                  >
-                    <span className="step-label">Volet 2 : Création de contenu ({b2.label})</span>
-                  </button>
+                <div className="admin-volets">
+                  {[
+                    { id: 'refonte_1500', title: 'Volet 1 · Cadrage & Refonte', badge: b1 },
+                    { id: 'contenu', title: 'Volet 2 · Création de contenu', badge: b2 },
+                  ].map((v) => (
+                    <button
+                      key={v.id}
+                      className={'admin-volet-btn' + (openVolet === v.id ? ' admin-volet-btn-open' : '')}
+                      onClick={() => setOpenVolet(openVolet === v.id ? null : v.id)}
+                      disabled={!g.volets[v.id]}
+                    >
+                      <span className="admin-volet-title">{v.title}</span>
+                      <span className={'admin-volet-status ' + v.badge.cls}>{v.badge.label}</span>
+                    </button>
+                  ))}
                 </div>
               )}
 
