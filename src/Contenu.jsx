@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import DictateButton from './Dictate.jsx'
 import { supabase } from './supabase.js'
 import { RecapContent, toMarkdown, buildRecapSections } from './recap.jsx'
 import { CONTENU_TITLE, routeSection, buildContenuSections } from './dataContenu.js'
@@ -136,12 +137,15 @@ function Field({ label, type, placeholder, value, onChange, rows, options }) {
     <div className="field">
       <label>{label}</label>
       {type === 'textarea' ? (
-        <textarea
-          rows={rows || 3}
-          placeholder={placeholder}
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <>
+          <textarea
+            rows={rows || 3}
+            placeholder={placeholder}
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          <DictateButton value={value} onChange={onChange} />
+        </>
       ) : type === 'choice' ? (
         <OptionRow options={options} value={value} onPick={(v) => onChange(v)} />
       ) : type === 'multichoice' ? (
