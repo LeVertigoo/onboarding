@@ -51,7 +51,9 @@ function fieldDefFor(sectionId, key, sectionsList) {
   const s = sectionsList.find((sec) => sec.id === sectionId)
   if (!s) return null
   const fields = s.kind === 'repeat' ? s.repeatFields : s.fields
-  return fields?.find((fl) => fl.key === key) || null
+  // `legacyFields` : questions retirées du formulaire mais dont des réponses
+  // existent déjà en base, pour qu'elles gardent leur vrai libellé.
+  return fields?.find((fl) => fl.key === key) || s.legacyFields?.find((fl) => fl.key === key) || null
 }
 
 export function fieldLabelFor(sectionId, key, sectionsList = defaultSections) {
